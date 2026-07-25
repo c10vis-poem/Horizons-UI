@@ -9,12 +9,16 @@ description: |
   "what was decided about Y" without re-searching the codebase. Current
   state (SOTU) is NOT part of this bundle — that's the SessionStart hook's
   job; this skill is architecture reference only.
-version: 0.3.0
+version: 1.1.0
+updated: 2026-07-25
 license: project-private
-tags: [horizons, android, qnn, hexagon, npu, anthropic-caching]
+tags: [horizons, android, qnn, hexagon, npu, anthropic-caching, obsidian]
 ---
 
 # Horizons Wiki Skill
+
+Canonical copy lives in `OBSIDIAN-Master_Wiki/skills/horizons-wiki/`;
+mirrored to `Novus-Agenti/skills/horizons-wiki/`.
 
 This skill packages the project's real architecture-of-record documents as
 a single context bundle:
@@ -39,6 +43,8 @@ Cursor, etc.) so the same wiki is consumable from any compliant tool.
     cacheable prefix sits in the system block.
   - Answering questions about subsystem boundaries, file ownership,
     or design decisions captured in the wiki.
+  - Any time you need to know "what was decided about X" or "where does
+    component Y live in the codebase."
 
 ## How to use
 
@@ -52,6 +58,32 @@ The agent host should:
 4. Use this skill's name as a cache-key correlator in logs so cache
    hit/miss can be attributed.
 
+## Architecture quick-reference (as of 2026-07-25)
+
+### The Horizons Workbench — seven tiles + center-hub Router
+
+The app is a manual, modular workbench. Core law: "Daemons stay dumb, the
+user is the loader." Boots EMPTY and stable; nothing runs until the user
+flips a fuse in the Router.
+
+**Flow:** Runtime DEFINED in Terminal → LANDS in Settings → VALIDATED by
+Monitor (greenLight) → ENGAGED by Router flip → supervised by CliffordService.
+
+### Runtime decision
+- **Primary:** GenieX on QAIRT/HTP SDK backend (`:18181/v1`, OpenAI-compat)
+- **Legacy:** ort_engine (ORT + QNN EP, `:8080/api/v1/generate`)
+- **Fallback compile pipeline:** DORMANT (see `wiki/COMPILE-PIPELINE.md`)
+
+### Key files
+| Component | Path |
+|-----------|------|
+| CliffordService | `horizons/fgs/CliffordService.kt` |
+| NpuClient | `horizons/core/llm/NpuClient.kt` |
+| DaemonLauncher | `horizons/core/shell/DaemonLauncher.kt` |
+| AgentLoop | `horizons/core/agent/AgentLoop.kt` |
+| ort_engine | `daemon/src/*.cpp` |
+| Tile-hub architecture | `knowledge/omni-claw-defined/workbench/00-TILE-HUB-ARCHITECTURE.md` |
+
 ## What NOT to do
 
   - Do not edit any of these files mid-session — invalidates the cache
@@ -61,11 +93,24 @@ The agent host should:
     cached prefix.
   - Do not trust a prior session's claims about network reachability
     (e.g. HuggingFace egress) at face value — verify fresh per
-    CLAUDE.md's `§HuggingFace Access` section. Network policy is set
+    CLAUDE.md's HuggingFace Access section. Network policy is set
     per remote-session container, not fixed project-wide.
+
+## Obsidian integration
+
+This skill is part of the OBSIDIAN Master Wiki vault. The architecture
+docs it references live in the Novus-Agenti repo; this skill defines
+which docs to load and in what order for any Horizons-related work.
 
 ## Files referenced
 
-  - `../../CLAUDE.md`
+  - `../../CLAUDE.md` (relative to Novus-Agenti/skills/horizons-wiki/)
   - `../../knowledge/daemon-reference/GPT-DAEMON-REFERENCE.md`
   - `../../knowledge/daemon-reference/NPU-RUNTIME-PATHS.md`
+
+## Maintenance protocol
+
+- Updated daily as part of the OBSIDIAN Master Wiki daily update protocol.
+- Architecture quick-reference section is refreshed to match the current
+  SOTU in CLAUDE.md.
+- Changes are logged in `daily-updates/YYYY-MM-DD.md`.

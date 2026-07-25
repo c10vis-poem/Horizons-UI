@@ -3,22 +3,27 @@ name: termux-mobile-dev
 description: >-
   Set up and troubleshoot the on-device Termux mobile dev environment — phone
   as TigerVNC + XFCE host, Samsung Tab S9 FE+ as AVNC client, plus the Matrix
-  (zsh + tmux + cmatrix + Termux:Float) phone terminal. Use when a VNC
-  connection from the tablet times out or is refused, when XFCE/dbus won't
-  start, when stale X lock files block the server, when setting VNC geometry,
-  or when configuring the Matrix waterfall split-pane look. Every step is
-  sourced or trial-verified; killed guesses are recorded so they aren't
-  repeated.
+  (zsh + tmux + cmatrix + Termux:Float) phone terminal. Includes on-device
+  coding agents (OpenClaude + DeepSeek V4 via OpenRouter) and Omnara mobile
+  front-end. Use when a VNC connection from the tablet times out or is refused,
+  when XFCE/dbus won't start, when stale X lock files block the server, when
+  setting VNC geometry, when configuring the Matrix waterfall split-pane look,
+  or when setting up on-device AI coding tools. Every step is sourced or
+  trial-verified; killed guesses are recorded so they aren't repeated.
+version: 1.1.0
+updated: 2026-07-25
+tags: [termux, vnc, android, mobile-dev, openclaude, matrix-terminal]
 ---
 
 # Termux Mobile Dev Environment
 
-This file is the full reference — there is no separate `wiki/Termux-VNC-Matrix-Environment.md`;
-an earlier version of this skill linked to one that was never actually created.
+This file is the full reference — there is no separate wiki page.
+Canonical copy lives in `OBSIDIAN-Master_Wiki/skills/termux-mobile-dev/`;
+mirrored to `Novus-Agenti/skills/termux-mobile-dev/`.
 
 ## Topology
-- **Host:** phone, Termux, no root → Xtigervnc + XFCE.
-- **Client:** Samsung Tab S9 FE+, AVNC → geometry **1280×800** (half of 2560×1600).
+- **Host:** Motorola Razr Ultra 2025, Termux, no root → Xtigervnc + XFCE.
+- **Client:** Samsung Tab S9 FE+, AVNC → geometry **1280x800** (half of 2560x1600).
 - **Transport:** same WiFi LAN. Phone IP is **DHCP, it changes** — re-check `ifconfig`
   (`wlan0` inet) every session. `127.0.0.1` is loopback; the tablet cannot use it.
 - Display `:1` = port **5901** (port = 5900 + display).
@@ -86,12 +91,12 @@ rm -f $PREFIX/tmp/.X1-lock $PREFIX/tmp/.X11-unix/X1
 ```
 
 ## Killed guesses (do not repeat)
-- ❌ "Android needs root to bind external ports." FALSE — Termux serves VNC to the LAN
+- **X** "Android needs root to bind external ports." FALSE — Termux serves VNC to the LAN
   with no root (XDA `[NO-ROOT]` guide).
-- ❌ Relying on CLI `-localhost no`. Use `tigervnc.conf` instead.
-- ❌ Using `ss`/`netstat`/`/proc/net/tcp` to verify the bind. Netlink is denied on
+- **X** Relying on CLI `-localhost no`. Use `tigervnc.conf` instead.
+- **X** Using `ss`/`netstat`/`/proc/net/tcp` to verify the bind. Netlink is denied on
   unprivileged Android. Use the VNC log or `nc`.
-- ❌ Cleaning `/tmp`. Termux uses `$PREFIX/tmp`.
+- **X** Cleaning `/tmp`. Termux uses `$PREFIX/tmp`.
 
 ## Matrix phone terminal (the "native Android over a waterfall" look)
 - Pieces: **zsh + Oh My Zsh** (the "zush"), **tmux** (split), **cmatrix** (waterfall),
@@ -133,19 +138,16 @@ wins on flexibility because you can point it at any model.
 ### Install on Termux (phone or tablet)
 ```bash
 pkg install nodejs git
-npm i -g openclaude          # or: git clone … && npm i -g .
+npm i -g openclaude
 ```
 
 ### Point it at DeepSeek V4 via OpenRouter
 ```bash
-# one-time: paste just the key at the prompt
 read -s OPENROUTER_KEY
 export OPENROUTER_API_KEY="$OPENROUTER_KEY"
 
-# persist for future shells
-echo 'export OPENROUTER_API_KEY="<paste-in-editor>"' >> ~/.zshrc
+echo 'export OPENROUTER_API_KEY="<paste>"' >> ~/.zshrc
 
-# OpenClaude config — OpenAI-compat base URL, DeepSeek V4 model id
 openclaude config set baseURL  https://openrouter.ai/api/v1
 openclaude config set model    deepseek/deepseek-chat-v4
 openclaude config set apiKey   "$OPENROUTER_API_KEY"
@@ -155,15 +157,14 @@ Then `openclaude` in the repo dir. Tool-call fidelity on DeepSeek is good but no
 Anthropic-tier — give it the grunt work (refactors, doc gen, test scaffolding, lint
 sweeps), keep architecture / multi-file reasoning on cloud Claude.
 
-### Cost shape (June 2026, OpenRouter)
+### Cost shape (July 2026, OpenRouter)
 - DeepSeek V4: ~$0.27 / M in, ~$1.10 / M out.
 - Cheap enough to run multiple parallel agents on the same branch all day.
 
 ### Killed guesses
-- ❌ "DeepSeek can hit the official `claude` CLI directly." It can't — that CLI is
-  hardcoded to Anthropic's `/v1/messages`. You'd need a proxy shim
-  (`claude-code-router`, `anyclaude`). OpenClaude sidesteps the whole problem.
-- ❌ "OpenCode = OpenClaude." Different projects. OpenClaude is the one to use here.
+- **X** "DeepSeek can hit the official `claude` CLI directly." It can't — that CLI is
+  hardcoded to Anthropic's `/v1/messages`. You'd need a proxy shim. OpenClaude sidesteps it.
+- **X** "OpenCode = OpenClaude." Different projects. OpenClaude is the one to use here.
 
 ---
 
@@ -173,6 +174,16 @@ YC S25 — mobile/web front-end for Claude Code. Same Anthropic Claude under the
 prettier UI, push notifications, multi-session management. Candidate for the next
 multi-agent fan-out (cloud Claude Code + OpenClaude-on-Termux + Omnara mobile front).
 Drop install + auth notes here after first run.
+
+## Obsidian Master Wiki — on-device vault sync
+
+This skill's home vault is `OBSIDIAN-Master_Wiki`. On-device path:
+```
+/storage/emulated/0/Documents/OBSIDIAN-Master_Wiki/
+```
+Markor and Obsidian both point at this folder. Google Drive mirrors it via
+FolderSync. GitHub repo `c10vis-poem/OBSIDIAN-Master_Wiki` is the git backend.
+See `sync/SYNC-SETUP.md` in the vault for full setup instructions.
 
 ## Sources
 - https://ivonblog.com/en-us/posts/vncserver-termux/

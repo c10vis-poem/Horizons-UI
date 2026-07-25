@@ -1,0 +1,42 @@
+# Gemma 4 12B IT QAT — Fallback Single-Agent Model
+# Role: Shell/single-agent mode (when dual-agent routing unavailable)
+# Runtime: GenieX QAIRT engine (QAT .dlc tensor graphs on HTP)
+
+model:
+  name: "Gemma-4-12B-IT"
+  variant: "QAT_Q4_K_M"
+  size_gb: 5.1
+  source: "https://huggingface.co/c10vis-poem/gemma-4-12b-it-qat"
+  local_path: "~/models/gemma-12b-it-qat/gemma-12b-it.dlc"
+
+inference:
+  context_size: 2048
+  max_tokens: 512
+  temperature: 0.7
+  top_p: 0.9
+  threads: -1
+  n_gpu_layers: 999
+
+memory:
+  state: "active"
+  persistent_context: false
+  cache_retention: "per-response"
+  allow_context_reuse: false
+
+routing:
+  trigger: "fallback when Qwen 2B+9B routing unavailable"
+  fallback_reason: "websocket bridge not ready OR dual-agent system down"
+  input_format: "direct query (no Agent 1 routing)"
+  output_format: "direct response"
+  timeout_seconds: 60
+
+metadata:
+  agent_role: "single_agent_fallback"
+  reasoning_depth: "medium-high"
+  token_efficiency: "medium"
+  latency: "medium"
+  note: "Use only when dual-agent unavailable. Useful during development/debugging."
+  suitable_for:
+    - shell_mode_operation
+    - standalone_reasoning
+    - webui_mode

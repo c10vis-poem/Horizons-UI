@@ -1,0 +1,1 @@
+https://huggingface.co/c10vis-poem/gemma-4-12b-it-qat/resolve/main/gemma-12b-it.dlc

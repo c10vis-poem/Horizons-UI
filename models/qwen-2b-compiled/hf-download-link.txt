@@ -1,0 +1,3 @@
+https://huggingface.co/NexaAI/Qwen3.5-2B-Instruct-NPU/resolve/main/qwen-2b.gguf
+# Fallback if NexaAI unavailable:
+# https://huggingface.co/Qwen/Qwen3.5-2B-Instruct-GGUF/resolve/main/qwen-2b-q4_0.gguf

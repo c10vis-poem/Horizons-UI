@@ -1,0 +1,43 @@
+# Qwen 3.5 2B (QAI Hub Compiled) — Fast Router Agent (Agent 1)
+# Role: Always-hot, low-latency JSON formatter and MEMO querier
+# Runtime: GenieX native QAI Hub binary (if available) or llama.cpp plugin
+
+model:
+  name: "Qwen3.5-2B-Instruct"
+  variant: "QAI_Hub_Compiled"
+  size_gb: 1.6
+  source: "https://huggingface.co/NexaAI/Qwen3.5-2B-Instruct-NPU"
+  local_path: "~/models/qwen-2b-compiled/qwen-2b.gguf"
+
+inference:
+  context_size: 1024
+  max_tokens: 256
+  temperature: 0.5
+  top_p: 0.8
+  threads: -1
+  n_gpu_layers: 999
+
+memory:
+  state: "always-hot"
+  persistent_context: true
+  cache_retention: "indefinite"
+  allow_context_reuse: true
+
+routing:
+  trigger: "immediate (on every user query)"
+  input_format: "user query + MEMO context snapshot"
+  output_format: "json (immediate response) OR handoff signal"
+  handoff_signal: "_handoff.md written if complexity exceeds threshold"
+  timeout_seconds: 5
+
+metadata:
+  agent_role: "gatekeeper"
+  reasoning_depth: "shallow"
+  token_efficiency: "very_high"
+  latency: "very_low (immediate)"
+  suitable_for:
+    - json_formatting
+    - fact_lookups
+    - memo_queries
+    - quick_routing_decisions
+    - simple_instructions

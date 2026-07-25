@@ -1,0 +1,41 @@
+# Qwen 3.5 9B Q4_0 — Deep Reasoning Agent (Agent 2)
+# Role: On-demand heavy thinker, triggered by Agent 1 handoff
+# Runtime: GenieX llama.cpp plugin targeting Hexagon HTP
+
+model:
+  name: "Qwen3.5-9B-Instruct-GGUF"
+  variant: "Q4_0"
+  size_gb: 5.74
+  source: "https://huggingface.co/Qwen/Qwen3.5-9B-Instruct-GGUF"
+  local_path: "~/models/qwen-9b-q4_0/qwen-9b-q4_0.gguf"
+
+inference:
+  context_size: 2048
+  max_tokens: 1024
+  temperature: 0.7
+  top_p: 0.9
+  threads: -1  # auto-detect CPU count
+  n_gpu_layers: 999  # push all layers to HTP
+
+memory:
+  state: "on-demand"
+  auto_purge_after_response: true
+  cache_drop_delay_ms: 100
+  allow_context_reuse: false  # fresh context per handoff
+
+routing:
+  trigger: "handoff_written_to_~/.openwiki/_handoff.md"
+  input_format: "json"
+  output_sink: "~/.openwiki/_result.md"
+  timeout_seconds: 120
+
+metadata:
+  agent_role: "specialist"
+  reasoning_depth: "deep"
+  token_efficiency: "medium"
+  latency: "high (intentional — deep work)"
+  suitable_for:
+    - complex_timeline_synthesis
+    - multi_step_reasoning
+    - code_generation
+    - novel_problem_solving

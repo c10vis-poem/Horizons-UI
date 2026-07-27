@@ -62,7 +62,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.horizons.HorizonsApplication
 import com.horizons.Panel
+import com.horizons.ui.theme.GoogleSansCode
 import com.horizons.ui.theme.HorizonsColors
+import com.horizons.ui.theme.Orbitron
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -124,27 +126,35 @@ fun HomeGrid(
                     },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Logo — centered, chunky monospace/terminal face, 1/3 bigger
+                // Logo — Orbitron ExtraBold 800 at 45sp, the specified face.
+                // Orbitron sets much wider than the platform monospace it
+                // replaces, so letterSpacing drops to 0 to buy back the width
+                // this wordmark needs to stay on one line.
                 Text(
                     "MØ[)u14R_11(",
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 44.sp,
-                    letterSpacing = 1.sp,
-                    color = HorizonsColors.PrimaryTeal,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                // Motto — ONE unbroken line, (Next-Gen Certified) in parens
-                Text(
-                    "*Pioneer_Tech,  (Next-Gen Certified)",
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontFamily = Orbitron,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 45.sp,
                     letterSpacing = 0.sp,
                     color = HorizonsColors.PrimaryTeal,
                     maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // Motto — ONE unbroken line, Google Sans Code at regular
+                // weight. Deliberately not ExtraBold: at this size the heavy
+                // cut fights the wordmark above it. Swap Normal → Light for a
+                // thinner line.
+                Text(
+                    "*Pioneer_Tech,  (Next-Gen Certified)",
+                    fontFamily = GoogleSansCode,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 18.sp,
+                    letterSpacing = 0.sp,
+                    color = HorizonsColors.PrimaryTeal,
+                    maxLines = 1,
+                    softWrap = false,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )

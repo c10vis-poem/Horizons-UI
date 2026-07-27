@@ -114,8 +114,14 @@ private val STATUS_NODE = 28.dp               // was 36 — "no reason for it to
 private val TITLE_DP = 14.dp
 private val SUB_DP = 8.dp
 private val CMD_DP = 8.dp
-private val SLOGAN_DP = 13.dp
-private val LOGO_DP = 44.dp
+/* Banner sizing. The wordmark renders at LOGO_DP * 0.75 and the "_11(" tail at
+ * LOGO_DP * 0.58, so LOGO_DP is NOT the rendered size — at the old 44dp the
+ * wordmark was landing at only 33dp, which the operator read as shrunken.
+ * 56dp puts the top line at 42dp rendered (0.75 x 56), the size asked for, with
+ * the tail following proportionally at ~32dp. SLOGAN_DP scales by the same 1.27
+ * so the three lines keep the proportions the operator said were already right. */
+private val SLOGAN_DP = 16.dp
+private val LOGO_DP = 56.dp
 private val STATUS_LABEL_DP = 9.dp
 
 /** Bleed room around each card so its border glow can spill OUTWARD. The card keeps
@@ -140,10 +146,18 @@ private val GLOW_PAD = 10.dp
  * wider spread. Bottom stagger is 72dp. Both are read off a screenshot rather
  * than measured, so they are the likeliest thing still needing a nudge.
  * Bottom/side numbers carry a +GLOW_PAD correction for the bleed room. */
-private val TOP_MID_Y = 0.dp
-private val TOP_SIDE_Y = 64.dp       // 64dp stagger vs the centre tile
-private val BOT_MID_Y = 26.dp        // 16dp visual + GLOW_PAD
-private val BOT_SIDE_Y = (-46).dp    // -56dp visual + GLOW_PAD -> 72dp stagger
+/* All six tiles pulled INWARD by TILE_INSET (3 x TITLE_DP = 42dp), per the
+ * operator: "stack three lines of text on top of each other, that's how far you
+ * move all six tiles inward toward the centre". Top tiles move down, bottom tiles
+ * move up; the stagger between centre and side tiles is preserved because the same
+ * inset applies to both. This also un-clips the TERMINAL card, which was running
+ * off the bottom edge and losing its "$_bash" prompt box. */
+private val TILE_INSET = 42.dp
+
+private val TOP_MID_Y = 0.dp + TILE_INSET
+private val TOP_SIDE_Y = 64.dp + TILE_INSET      // 64dp stagger vs the centre tile
+private val BOT_MID_Y = 26.dp - TILE_INSET       // 16dp visual + GLOW_PAD
+private val BOT_SIDE_Y = (-46).dp - TILE_INSET   // -56dp visual + GLOW_PAD -> 72dp stagger
 private val SIDE_X = 0.dp            // 10dp visual - GLOW_PAD
 
 private val BG_DARK = Color(0xFF020406)
@@ -945,22 +959,32 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
         // itself, and three of those stacked boxes is what made the plate balloon.
         // Every line below pins lineHeight to its own size so the box hugs the
         // glyphs instead of the theme's default leading.
+        // Scaled up 50% from 7/11/6dp to 10/16/9dp, with padding and corner
+        // radius following, per the operator: the plate had been tightened past
+        // the point of legibility.
+        //
+        // Offset moved 0.80 -> 0.97 x crystalSize. The pedestal's lower disc
+        // bottoms out at 0.90 x crystalSize (platBot in drawCrystal's 100-unit
+        // viewBox), so at 0.80 the plate was riding ON the platform and hiding
+        // the socket nodes behind it. 0.97 drops it clear with ~10dp of air, so
+        // all of the lit sockets stay visible — the operator called those out
+        // specifically as something to keep.
         val d = LocalDensity.current
         Column(
             Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = crystalSize * 0.80f)
-                .clip(RoundedCornerShape(6.dp))
+                .offset(y = crystalSize * 0.97f)
+                .clip(RoundedCornerShape(9.dp))
                 .background(Color(0xFF0A0518).copy(alpha = 0.92f))
-                .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 7.dp, vertical = 3.dp),
+                .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(9.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 "// CORE_HUB",
                 color = Color(0xFFC4B5FD),
-                fontSize = with(d) { 7.dp.toSp() },
-                lineHeight = with(d) { 8.dp.toSp() },
+                fontSize = with(d) { 10.dp.toSp() },
+                lineHeight = with(d) { 11.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -968,22 +992,22 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
             Text(
                 "ROUTER",
                 color = Color.White,
-                fontSize = with(d) { 11.dp.toSp() },
-                lineHeight = with(d) { 12.dp.toSp() },
+                fontSize = with(d) { 16.dp.toSp() },
+                lineHeight = with(d) { 17.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
+                letterSpacing = 1.5.sp,
                 maxLines = 1,
-                modifier = Modifier.padding(top = 1.dp),
+                modifier = Modifier.padding(top = 2.dp),
             )
             Text(
                 "\$_Statio",
                 color = Color(0xFFC4B5FD).copy(alpha = 0.8f),
-                fontSize = with(d) { 6.dp.toSp() },
-                lineHeight = with(d) { 7.dp.toSp() },
+                fontSize = with(d) { 9.dp.toSp() },
+                lineHeight = with(d) { 10.dp.toSp() },
                 fontFamily = MONO,
                 maxLines = 1,
-                modifier = Modifier.padding(top = 1.dp),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }

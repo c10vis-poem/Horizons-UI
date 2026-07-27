@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
@@ -102,13 +103,25 @@ import kotlin.math.sqrt
 // ---------------------------------------------------------------------------------
 private val CARD_W = 114.dp                   // kept: operator likes the tile size
 private val CARD_H = 138.dp                   // kept
-private val ICON_SZ = 68.dp                   // V5: up from 60
-private val TITLE_SP = 14.sp                  // kept: in-tile type reads well
-private val SLOGAN_SP = 13.sp
-private val LOGO_SP = 44.sp
-private const val LOGO_BRACKET_SCALE = 0.60f  // V5: brackets down to ~cap height
-private const val CRYSTAL_SCALE = 1.42f       // V5: up from 1.20
-private val STATUS_NODE = 36.dp
+private val ICON_SZ = 68.dp                   // up from 60
+private const val LOGO_BRACKET_SCALE = 0.60f  // brackets down to ~cap height
+private const val CRYSTAL_SCALE = 1.42f       // up from 1.20
+private val STATUS_NODE = 28.dp               // was 36 — "no reason for it to be that fat"
+
+/* Type sizes are declared in dp, not sp, and converted per-density below.
+ *
+ * This dock is fixed geometry: cards are a hard 114 x 138dp and the labels have to
+ * fit inside them. Sizing in sp makes every label track the SYSTEM font-scale
+ * setting, so on a phone with large text turned on the titles overflowed and got
+ * clipped — "TERMINAL" rendered as "TERMINA", "HORIZONS" as "HORIZON", and the
+ * "commands" subtitle vanished entirely. Deriving from dp keeps the type honest to
+ * the layout at any accessibility setting. */
+private val TITLE_DP = 14.dp
+private val SUB_DP = 8.dp
+private val CMD_DP = 8.dp
+private val SLOGAN_DP = 13.dp
+private val LOGO_DP = 44.dp
+private val STATUS_LABEL_DP = 9.dp
 
 /** Bleed room around each card so its border glow can spill OUTWARD. The card keeps
  *  its CARD_W x CARD_H footprint; only the box around it grows, and the offsets
@@ -116,13 +129,16 @@ private val STATUS_NODE = 36.dp
  *  are measured off the card body, so they follow this automatically. */
 private val GLOW_PAD = 10.dp
 
-// Tile placement inside the clock wheel. V5 spreads them — top row up, bottom row
-// down — which is what frees the middle for the crystal. The bottom/side numbers
-// carry a +GLOW_PAD correction for the bleed room added above.
-private val TOP_MID_Y = 4.dp
-private val TOP_SIDE_Y = 34.dp
-private val BOT_MID_Y = 10.dp        // 0dp visual + GLOW_PAD
-private val BOT_SIDE_Y = (-42).dp    // -52dp visual + GLOW_PAD
+/* Tile placement inside the clock wheel. The centre tiles sit further out than the
+ * side pairs — that stagger is what makes it read as a clock face rather than two
+ * rows. Operator on the previous pass: the centre tiles were too crowded inward,
+ * top needs to come up and bottom needs to go down "considerably", so the
+ * differential is widened here (top 30 -> 44dp, bottom 52 -> 72dp).
+ * Bottom/side numbers carry a +GLOW_PAD correction for the bleed room. */
+private val TOP_MID_Y = (-4).dp
+private val TOP_SIDE_Y = 40.dp
+private val BOT_MID_Y = 26.dp        // 16dp visual + GLOW_PAD
+private val BOT_SIDE_Y = (-46).dp    // -56dp visual + GLOW_PAD
 private val SIDE_X = 0.dp            // 10dp visual - GLOW_PAD
 
 private val BG_DARK = Color(0xFF020406)
@@ -288,24 +304,31 @@ fun HomeGrid(
 // ---------------------------------------------------------------------------------
 
 private fun DrawScope.drawCord(start: Offset, end: Offset, hubCentre: Offset, color: Color) {
-    val mid = Offset((start.x + end.x) / 2f, (start.y + end.y) / 2f)
-
-    // Bow the curve outward, away from the hub, the way the reference arcs do.
-    val away = Offset(mid.x - hubCentre.x, mid.y - hubCentre.y)
-    val len = sqrt(away.x * away.x + away.y * away.y)
     val dx = end.x - start.x
     val dy = end.y - start.y
     val span = sqrt(dx * dx + dy * dy)
-    val bow = span * 0.20f
-    val ctrl = if (len > 0.01f) {
-        Offset(mid.x + away.x / len * bow, mid.y + away.y / len * bow)
+
+    /* Cubic, not quadratic. A single control point gives one flat bow, which is why
+     * the previous pass read as straight runs. Two control points let the cord leave
+     * the tile perpendicular to its edge and arrive at the socket along the hub's
+     * outward radius — so it rounds off into the corner instead of aiming at it.
+     *
+     *   c1: straight out of the tile, vertically, away from the card
+     *   c2: backed off the socket along the outward radius from the hub centre */
+    val c1 = Offset(start.x, start.y + (if (dy > 0f) 1f else -1f) * span * 0.42f)
+
+    val ax = end.x - hubCentre.x
+    val ay = end.y - hubCentre.y
+    val alen = sqrt(ax * ax + ay * ay)
+    val c2 = if (alen > 0.01f) {
+        Offset(end.x + ax / alen * span * 0.30f, end.y + ay / alen * span * 0.30f)
     } else {
-        mid
+        Offset(end.x, end.y - span * 0.30f)
     }
 
     val path = Path().apply {
         moveTo(start.x, start.y)
-        quadraticTo(ctrl.x, ctrl.y, end.x, end.y)
+        cubicTo(c1.x, c1.y, c2.x, c2.y, end.x, end.y)
     }
 
     val w = size.minDimension / 400f   // keep stroke weight screen-proportional
@@ -414,8 +437,10 @@ private fun logoText(raw: String, base: TextUnit): AnnotatedString = buildAnnota
 
 @Composable
 private fun HeaderBanner() {
-    val big = LOGO_SP * 0.75f
-    val small = LOGO_SP * 0.58f
+    val d = LocalDensity.current
+    val big = with(d) { (LOGO_DP * 0.75f).toSp() }
+    val small = with(d) { (LOGO_DP * 0.58f).toSp() }
+    val sloganSp = with(d) { SLOGAN_DP.toSp() }
 
     Column(
         Modifier.fillMaxWidth(),
@@ -449,14 +474,14 @@ private fun HeaderBanner() {
             Text(
                 "*Pioneer_Tech,",
                 color = Color(0xFF5EEAD4),
-                fontSize = SLOGAN_SP,
+                fontSize = sloganSp,
                 fontFamily = MONO,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                logoText("(Next-Gen Certified)", SLOGAN_SP),
+                logoText("(Next-Gen Certified)", sloganSp),
                 color = Color(0xFF99F6E4),
-                fontSize = SLOGAN_SP,
+                fontSize = sloganSp,
                 fontFamily = MONO,
                 fontWeight = FontWeight.ExtraBold,
             )
@@ -465,7 +490,7 @@ private fun HeaderBanner() {
         Text(
             "HORIZONS // V4",
             color = C_MONITOR.copy(alpha = 0.5f),
-            fontSize = 9.sp,
+            fontSize = with(d) { 9.dp.toSp() },
             fontFamily = MONO,
             textAlign = TextAlign.End,
             modifier = Modifier
@@ -595,31 +620,37 @@ private fun TileCard(
                     onClick = onClick,
                 ),
         ) {
+            val d = LocalDensity.current
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = protrude + 6.dp),
+                    .padding(start = 5.dp, end = 5.dp, bottom = 7.dp, top = protrude + 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     tile.name,
                     color = tile.color,
-                    fontSize = TITLE_SP,
+                    fontSize = with(d) { TITLE_DP.toSp() },
                     fontFamily = MONO,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    letterSpacing = 0.5.sp,
                     maxLines = 1,
+                    softWrap = false,
                     textAlign = TextAlign.Center,
                 )
 
+                // Two lines by design — the operator's note was that "commands" had
+                // gone missing, not that it should be dropped. Wrapping keeps the
+                // full slug + descriptor on every tile regardless of string length.
                 Text(
                     "${tile.slug} · ${tile.sub}",
                     color = Color(0xFF94A3B8),
-                    fontSize = 8.sp,
+                    fontSize = with(d) { SUB_DP.toSp() },
                     fontFamily = MONO,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = 2,
+                    lineHeight = with(d) { (SUB_DP + 2.dp).toSp() },
                     textAlign = TextAlign.Center,
                 )
 
@@ -643,15 +674,16 @@ private fun TileCard(
                     Text(
                         tile.cmd,
                         color = tile.color,
-                        fontSize = 8.sp,
+                        fontSize = with(d) { CMD_DP.toSp() },
                         fontFamily = MONO,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
+                        softWrap = false,
                     )
                     Text(
                         "⚙",
                         color = tile.color.copy(alpha = 0.6f),
-                        fontSize = 8.sp,
+                        fontSize = with(d) { CMD_DP.toSp() },
                         fontFamily = MONO,
                         maxLines = 1,
                     )
@@ -846,8 +878,14 @@ private fun DrawScope.drawGlyph(glyph: Glyph, measurer: TextMeasurer) {
 private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
     val crystalSize = 110.dp * CRYSTAL_SCALE
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    /* The hub used to be a Column of [crystal, label]. Centring that Column centres
+     * the PAIR, which pushes the crystal itself above centre by half the label's
+     * height — the operator's "router hub is way off centred to the top".
+     *
+     * Now the Box is sized by the crystal alone, so the crystal is what gets
+     * centred, and the label hangs off the bottom edge without displacing it. */
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
@@ -878,36 +916,42 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
             ) { drawCrystal() }
         }
 
-        // ROUTER plate — tightened toward the reference's proportions.
+        // ROUTER plate — hangs below the crystal without displacing it, and sized
+        // down again toward the reference's compact proportions.
+        val d = LocalDensity.current
         Column(
             Modifier
-                .offset(y = (-10).dp)
-                .clip(RoundedCornerShape(7.dp))
-                .background(Color(0xFF0A0518).copy(alpha = 0.9f))
-                .border(1.dp, VIOLET.copy(alpha = 0.3f), RoundedCornerShape(7.dp))
-                .padding(horizontal = 8.dp, vertical = 1.dp),
+                .align(Alignment.TopCenter)
+                .offset(y = crystalSize * 0.80f)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFF0A0518).copy(alpha = 0.92f))
+                .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 7.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 "// CORE_HUB",
                 color = Color(0xFFC4B5FD),
-                fontSize = 8.sp,
+                fontSize = with(d) { 7.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
             )
             Text(
                 "ROUTER",
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = with(d) { 11.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp,
+                letterSpacing = 1.sp,
+                maxLines = 1,
             )
             Text(
                 "\$_Statio",
                 color = Color(0xFFC4B5FD).copy(alpha = 0.8f),
-                fontSize = 7.sp,
+                fontSize = with(d) { 6.dp.toSp() },
                 fontFamily = MONO,
+                maxLines = 1,
             )
         }
     }
@@ -1054,6 +1098,7 @@ private fun DrawScope.drawCrystal() {
 
 @Composable
 private fun ChatBar() {
+    val d = LocalDensity.current
     Row(
         Modifier
             .fillMaxWidth()
@@ -1068,15 +1113,16 @@ private fun ChatBar() {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("⊕", color = C_MONITOR, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("⊕", color = C_MONITOR, fontSize = with(d) { 14.dp.toSp() }, fontWeight = FontWeight.Bold)
             Text(
                 "tap_or_hold  ask //",
                 color = Color(0xFF5EEAD4).copy(alpha = 0.8f),
-                fontSize = 11.sp,
+                fontSize = with(d) { 11.dp.toSp() },
                 fontFamily = MONO,
+                maxLines = 1,
             )
         }
-        Text("↑", color = C_MONITOR, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("↑", color = C_MONITOR, fontSize = with(d) { 14.dp.toSp() }, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1096,28 +1142,34 @@ private val STATUS = listOf(
 
 @Composable
 private fun StatusNodes() {
+    // Slimmed down again: the header line and the labels now sit on the same row as
+    // the spheres rather than stacking above them, the spheres are 28dp instead of
+    // 36, and the padding is halved. That is most of the height the operator wanted
+    // back off the bottom of the screen.
+    val d = LocalDensity.current
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(SLATE_950.copy(alpha = 0.9f))
-            .border(1.dp, C_MONITOR.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .border(1.dp, C_MONITOR.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             "// SYSTEM_STATUS",
             color = C_MONITOR.copy(alpha = 0.5f),
-            fontSize = 9.sp,
+            fontSize = with(d) { 8.dp.toSp() },
             fontFamily = MONO,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
+            maxLines = 1,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             STATUS.forEach { node ->
@@ -1161,13 +1213,14 @@ private fun StatusNodes() {
                             )
                         }
                     }
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         node.label,
                         color = if (node.active) node.color else Color(0xFF475569),
-                        fontSize = 10.sp,
+                        fontSize = with(d) { STATUS_LABEL_DP.toSp() },
                         fontFamily = MONO,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                     )
                 }
             }

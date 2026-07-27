@@ -171,7 +171,7 @@ private val MONO = FontFamily.Monospace
  *  in the strapline — the operator wanted that phrase echoing the logo — and Google
  *  Sans Code (OFL) for "Pioneer_Tech," which the operator wanted thinner than the
  *  wordmark. Each is a single variable-font file; the two weights below are pinned
- *  via XML font-family resources (res/font/*.xml → fontVariationSettings), not
+ *  via XML font-family resources (res/font XML files -> fontVariationSettings), not
  *  Compose's FontVariation API, which is @ExperimentalTextApi and this module
  *  compiles opt-in violations as errors. Body copy stays monospace. */
 private val ORBITRON = FontFamily(

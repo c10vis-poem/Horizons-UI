@@ -1,5 +1,10 @@
 package com.horizons.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,6 +65,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.horizons.Panel
+import kotlin.math.PI
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /* ==================================================================================
@@ -114,7 +121,7 @@ private val STATUS_NODE = 28.dp               // was 36 — "no reason for it to
 private val TITLE_DP = 14.dp
 private val SUB_DP = 8.dp
 private val CMD_DP = 8.dp
-/* Banner sizing. The wordmark renders at LOGO_DP * 0.75 and the "_11(" tail at
+/* Banner sizing. The wordmark renders at LOGO_DP * 0.75 and the "_11C." tail at
  * LOGO_DP * 0.58, so LOGO_DP is NOT the rendered size — at the old 44dp the
  * wordmark was landing at only 33dp, which the operator read as shrunken.
  * 56dp puts the top line at 42dp rendered (0.75 x 56), the size asked for, with
@@ -154,8 +161,14 @@ private val GLOW_PAD = 10.dp
  * off the bottom edge and losing its "$_bash" prompt box. */
 private val TILE_INSET = 42.dp
 
-private val TOP_MID_Y = 0.dp + TILE_INSET
-private val TOP_SIDE_Y = 64.dp + TILE_INSET      // 64dp stagger vs the centre tile
+/** Second pass: top row and the crystal both lift by two more label-lines (28dp).
+ *  The bottom row stays put. Cord endpoints are measured off the real tile and
+ *  pedestal bounds, so the plasma tubes re-aim themselves and stay congruent. */
+private val TOP_LIFT = 28.dp
+private val HUB_LIFT = 28.dp
+
+private val TOP_MID_Y = 0.dp + TILE_INSET - TOP_LIFT
+private val TOP_SIDE_Y = 64.dp + TILE_INSET - TOP_LIFT  // 64dp stagger vs the centre tile
 private val BOT_MID_Y = 26.dp - TILE_INSET       // 16dp visual + GLOW_PAD
 private val BOT_SIDE_Y = (-46).dp - TILE_INSET   // -56dp visual + GLOW_PAD -> 72dp stagger
 private val SIDE_X = 0.dp            // 10dp visual - GLOW_PAD
@@ -180,23 +193,28 @@ private val SLATE_950 = Color(0xFF020617)
 
 private val MONO = FontFamily.Monospace
 
-/** Banner faces, confirmed on-device and superseding the Audiowide guess this file
- *  shipped with: Orbitron (SIL OFL) for the wordmark AND for "(Next-Gen Certified)"
- *  in the strapline — the operator wanted that phrase echoing the logo — and Google
- *  Sans Code (OFL) for "Pioneer_Tech," which the operator wanted thinner than the
- *  wordmark. Each is a single variable-font file; the two weights below are pinned
- *  via XML font-family resources (res/font XML files -> fontVariationSettings), not
- *  Compose's FontVariation API, which is @ExperimentalTextApi and this module
- *  compiles opt-in violations as errors. Body copy stays monospace. */
-private val ORBITRON = FontFamily(
-    Font(R.font.orbitron_regular, FontWeight.Normal),
-    Font(R.font.orbitron_extrabold, FontWeight.ExtraBold),
-)
-private val GOOGLE_SANS_CODE = FontFamily(
-    Font(R.font.google_sans_code_light, FontWeight.Light),
-    Font(R.font.google_sans_code_regular, FontWeight.Normal),
-    Font(R.font.google_sans_code_bold, FontWeight.Bold),
-)
+/** Banner faces from the operator's Merovingian-fonts fork (OFL; licenses under
+ *  licenses/). These are STATIC single-weight instances cut from the upstream
+ *  variable files, not the variable files themselves.
+ *
+ *  That distinction is the whole point. Orbitron[wght].ttf carries wght 400..900
+ *  but reports usWeightClass=400, and its outlines only become ExtraBold if the
+ *  wght axis is actually driven at render time. Asking for that through an XML
+ *  fontVariationSettings resource is not reliable once Compose re-resolves the
+ *  typeface by weight, so the wordmark was coming out at Regular and visibly
+ *  failing to match the operator's 800 reference. Pinning the axis at build time
+ *  with fontTools bakes 800 into the glyph outlines (usWeightClass=800, no fvar),
+ *  so there is nothing left to interpret or get wrong on device.
+ *
+ *  Orbitron 800 draws the wordmark and "(Next-Gen Certified)"; Google Sans Code
+ *  400 draws "Pioneer_Tech,". Body copy stays monospace.
+ *
+ *  Each Font is declared at the weight its outlines actually are, so the Text
+ *  call sites match exactly and Compose has no reason to synthesise anything on
+ *  top — faux-bolding an already-ExtraBold face is how logos end up looking
+ *  smeared. */
+private val ORBITRON = FontFamily(Font(R.font.orbitron_extrabold_static, FontWeight.ExtraBold))
+private val GOOGLE_SANS_CODE = FontFamily(Font(R.font.google_sans_code_regular_static, FontWeight.Normal))
 
 private enum class Glyph { MONITOR, CHAT, SETTINGS, TERMINAL, ARCHIVES, HORIZONS }
 
@@ -376,19 +394,54 @@ private fun DrawScope.drawCord(start: Offset, end: Offset, hubCentre: Offset, co
 // Backdrop — stars + telemetry rings. 400 x 600 viewBox.
 // ---------------------------------------------------------------------------------
 
+/** One star. [tier] 0..3 is depth — 3 is nearest, biggest, and the only tier that
+ *  gets a glint cross. [phase] staggers the twinkle so they don't pulse in unison. */
+private data class BgStar(
+    val pos: Offset,
+    val radius: Float,
+    val alpha: Float,
+    val teal: Boolean,
+    val tier: Int,
+    val phase: Float,
+)
+
 @Composable
 private fun AstralBackdrop(modifier: Modifier = Modifier) {
+    // Four depth tiers rather than three, so the field reads as having distance
+    // in it instead of two flat layers. Teal share raised from every 4th to every
+    // 3rd star. The positions keep the reference build's integer hash untouched.
     val stars = remember {
         List(minOf(STARS, 160)) { i ->
             val x = ((i * 37 + 13) % 100) * 4f
             val y = ((i * 59 + 7) % 100) * 6f
-            val fg = i % 5 == 0
-            val mid = i % 3 == 0
-            val r = if (fg) 1.5f else if (mid) 1.0f else 0.6f
-            val a = if (fg) 0.8f else if (mid) 0.45f else 0.2f
-            Triple(Offset(x, y), r to a, i % 4 == 0)
+            val tier = when {
+                i % 11 == 0 -> 3
+                i % 5 == 0 -> 2
+                i % 3 == 0 -> 1
+                else -> 0
+            }
+            BgStar(
+                pos = Offset(x, y),
+                radius = when (tier) { 3 -> 2.0f; 2 -> 1.5f; 1 -> 1.0f; else -> 0.55f },
+                alpha = when (tier) { 3 -> 0.95f; 2 -> 0.80f; 1 -> 0.45f; else -> 0.20f },
+                teal = i % 3 == 0,
+                tier = tier,
+                phase = ((i * 37) % 100) / 100f,
+            )
         }
     }
+
+    // Slow, cheap twinkle: one animated float drives the whole field, and each
+    // star reads it through its own phase offset. Only the two near tiers and the
+    // telemetry-centre stars respond — the far dust stays steady, which is what
+    // sells the depth.
+    val twinkle = rememberInfiniteTransition(label = "starfield")
+    val t by twinkle.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(7600, easing = LinearEasing)),
+        label = "twinkle",
+    )
 
     Canvas(modifier) {
         val sx = size.width / 400f
@@ -396,14 +449,34 @@ private fun AstralBackdrop(modifier: Modifier = Modifier) {
         fun p(x: Float, y: Float) = Offset(x * sx, y * sy)
         val ru = minOf(sx, sy)
 
-        stars.forEach { (pos, ra, teal) ->
-            val (r, a) = ra
-            drawCircle(
-                color = if (teal) C_MONITOR else Color.White,
-                radius = r * ru,
-                center = p(pos.x, pos.y),
-                alpha = a,
-            )
+        // Deliberately shallow: brightness rides between 0.88x and 1.0x over a
+        // ~7.6s cycle, with every star on its own phase. Slow and low-contrast
+        // enough to register as "alive" in peripheral vision without pulling
+        // focus off the dock or reading as flashing.
+        fun pulse(phase: Float) =
+            0.94f + 0.06f * sin(2f * PI.toFloat() * ((t + phase) % 1f))
+
+        /** A star with a soft cross-glint. Arms are faint and short on purpose —
+         *  a suggestion of a sparkle, not a lens flare. */
+        fun glintStar(centre: Offset, r: Float, color: Color, alpha: Float) {
+            drawCircle(color, radius = r * 2.4f, center = centre, alpha = alpha * 0.12f)
+            drawCircle(color, radius = r, center = centre, alpha = alpha)
+            drawCircle(Color.White, radius = r * 0.40f, center = centre, alpha = alpha * 0.9f)
+            val arm = r * 2.6f
+            val w = r * 0.22f
+            drawLine(color, Offset(centre.x - arm, centre.y), Offset(centre.x + arm, centre.y), strokeWidth = w, alpha = alpha * 0.28f)
+            drawLine(color, Offset(centre.x, centre.y - arm), Offset(centre.x, centre.y + arm), strokeWidth = w, alpha = alpha * 0.28f)
+        }
+
+        stars.forEach { s ->
+            val c = if (s.teal) C_MONITOR else Color.White
+            val centre = p(s.pos.x, s.pos.y)
+            val a = if (s.tier >= 2) s.alpha * pulse(s.phase) else s.alpha
+            if (s.tier == 3) {
+                glintStar(centre, s.radius * ru, c, a)
+            } else {
+                drawCircle(color = c, radius = s.radius * ru, center = centre, alpha = a)
+            }
         }
 
         fun ring(cx: Float, cy: Float, r: Float, w: Float, alpha: Float, dash: FloatArray? = null) {
@@ -425,21 +498,35 @@ private fun AstralBackdrop(modifier: Modifier = Modifier) {
         ring(200f, 240f, 105f, 0.5f, 0.12f, floatArrayOf(6f, 4f))
         ring(200f, 240f, 145f, 0.5f, 0.08f)
 
+        // Each cluster now encircles a twinkling star instead of empty space —
+        // the rings read as orbits around something, which is what gives the
+        // backdrop its sense of depth. Sizes vary per cluster so they don't all
+        // sit at the same apparent distance.
+        fun cluster(cx: Float, cy: Float, starR: Float, phase: Float) {
+            glintStar(p(cx, cy), starR * ru, C_MONITOR, 0.72f * pulse(phase))
+        }
+
         if (TELEMETRY_CLUSTERS >= 1) {
             ring(72f, 110f, 24f, 0.6f, 0.20f)
             ring(72f, 110f, 38f, 0.5f, 0.12f, floatArrayOf(2f, 2f))
+            cluster(72f, 110f, 1.9f, 0.05f)
         }
         if (TELEMETRY_CLUSTERS >= 2) {
             ring(328f, 390f, 20f, 0.6f, 0.20f)
             ring(328f, 390f, 32f, 0.5f, 0.12f)
+            cluster(328f, 390f, 1.6f, 0.38f)
         }
         if (TELEMETRY_CLUSTERS >= 3) {
             ring(328f, 110f, 18f, 0.5f, 0.18f, floatArrayOf(4f, 2f))
             ring(72f, 390f, 22f, 0.5f, 0.15f)
+            cluster(328f, 110f, 1.3f, 0.62f)
+            cluster(72f, 390f, 1.5f, 0.81f)
         }
         if (TELEMETRY_CLUSTERS >= 4) {
             ring(200f, 55f, 28f, 0.5f, 0.15f, floatArrayOf(5f, 3f))
             ring(200f, 510f, 25f, 0.5f, 0.15f, floatArrayOf(3f, 3f))
+            cluster(200f, 55f, 1.7f, 0.22f)
+            cluster(200f, 510f, 1.4f, 0.55f)
         }
     }
 }
@@ -468,7 +555,11 @@ private fun HeaderBanner() {
         // one uniform size, no per-glyph scaling — so this matches that build.
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                "MØ[)u14R",
+                // Plain O, not Ø: Orbitron has no U+00D8 glyph, so Android was
+                // substituting a fallback face for that one character — which is
+                // why the slashed O looked like it came from a different font.
+                // It did. Every other character in the wordmark is covered.
+                "MO[)u14R",
                 color = Color(0xFF5EEAD4),
                 fontSize = big,
                 lineHeight = big * 1.05f,
@@ -477,7 +568,9 @@ private fun HeaderBanner() {
                 letterSpacing = 0.sp,
             )
             Text(
-                "_11(",
+                // Reads as "LLC." — the trailing glyph was a literal open paren,
+                // which rendered as a clipped half-C. Real C, and a full stop.
+                "_11C.",
                 color = C_MONITOR,
                 fontSize = small,
                 lineHeight = small * 1.05f,
@@ -550,7 +643,11 @@ private fun ClockWheel(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier, contentAlignment = Alignment.Center) {
-        RouterHub(onClick = { onTileClick(Panel.Router) }, onHubBounds = onHubBounds)
+        RouterHub(
+            onClick = { onTileClick(Panel.Router) },
+            onHubBounds = onHubBounds,
+            modifier = Modifier.offset(y = -HUB_LIFT),
+        )
 
         TileAt(TILES[0], Alignment.TopCenter, 0.dp, TOP_MID_Y, onTileClick, measurer, onAnchor)
         TileAt(TILES[1], Alignment.TopEnd, -SIDE_X, TOP_SIDE_Y, onTileClick, measurer, onAnchor)
@@ -907,7 +1004,11 @@ private fun DrawScope.drawGlyph(glyph: Glyph, measurer: TextMeasurer) {
 // ---------------------------------------------------------------------------------
 
 @Composable
-private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
+private fun RouterHub(
+    onClick: () -> Unit,
+    onHubBounds: (Rect) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val crystalSize = 110.dp * CRYSTAL_SCALE
 
     /* The hub used to be a Column of [crystal, label]. Centring that Column centres
@@ -918,7 +1019,7 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
      * centred, and the label hangs off the bottom edge without displacing it. */
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.clickable(
+        modifier = modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
             onClick = onClick,
@@ -973,7 +1074,7 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
         Column(
             Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = crystalSize * 0.97f)
+                .offset(y = crystalSize * 0.97f + 16.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .background(Color(0xFF0A0518).copy(alpha = 0.92f))
                 .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(9.dp))

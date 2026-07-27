@@ -129,16 +129,26 @@ private val STATUS_LABEL_DP = 9.dp
  *  are measured off the card body, so they follow this automatically. */
 private val GLOW_PAD = 10.dp
 
-/* Tile placement inside the clock wheel. The centre tiles sit further out than the
- * side pairs — that stagger is what makes it read as a clock face rather than two
- * rows. Operator on the previous pass: the centre tiles were too crowded inward,
- * top needs to come up and bottom needs to go down "considerably", so the
- * differential is widened here (top 30 -> 44dp, bottom 52 -> 72dp).
+/* Tile placement inside the clock wheel.
+ *
+ * The centre tiles sit further out than the side pairs; that stagger is what makes
+ * this read as a clock face instead of two rows.
+ *
+ * A caution about references, since it cost a round: the repo's
+ * 33-prior-build-full-home-target.png is a DIFFERENT, older design (ARTIFACTS not
+ * ARCHIVES, chat bar below the status panel) and its stagger is 0.656 x card
+ * height. The build actually being matched here is tighter than that, nearer
+ * 0.35-0.45. Do not tune these off 33-prior-build.
+ *
+ * Top stagger is 64dp (~0.46 x CARD_H) — comfortably more than the 44dp the
+ * operator called "crowded inward", without inheriting the older build's much
+ * wider spread. Bottom stagger is 72dp. Both are read off a screenshot rather
+ * than measured, so they are the likeliest thing still needing a nudge.
  * Bottom/side numbers carry a +GLOW_PAD correction for the bleed room. */
-private val TOP_MID_Y = (-4).dp
-private val TOP_SIDE_Y = 40.dp
+private val TOP_MID_Y = 0.dp
+private val TOP_SIDE_Y = 64.dp       // 64dp stagger vs the centre tile
 private val BOT_MID_Y = 26.dp        // 16dp visual + GLOW_PAD
-private val BOT_SIDE_Y = (-46).dp    // -56dp visual + GLOW_PAD
+private val BOT_SIDE_Y = (-46).dp    // -56dp visual + GLOW_PAD -> 72dp stagger
 private val SIDE_X = 0.dp            // 10dp visual - GLOW_PAD
 
 private val BG_DARK = Color(0xFF020406)

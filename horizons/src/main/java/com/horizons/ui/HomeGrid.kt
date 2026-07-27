@@ -1074,7 +1074,13 @@ private fun RouterHub(
         Column(
             Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = crystalSize * 0.97f + 16.dp)
+                // +40dp, not +16. The plate is anchored to the crystal, so when the
+                // hub lifted 28dp the plate came with it — the previous +16 left it
+                // a net 12dp HIGHER than before, the opposite of what was wanted.
+                // 40 = that 16 plus the 24 asked for, so it now sits 24dp lower
+                // than the last build rather than 24dp lower than an anchor that
+                // had itself moved.
+                .offset(y = crystalSize * 0.97f + 40.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .background(Color(0xFF0A0518).copy(alpha = 0.92f))
                 .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(9.dp))

@@ -51,8 +51,10 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.horizons.R
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -142,6 +144,18 @@ private val VIOLET = Color(0xFFA855F7)
 private val SLATE_950 = Color(0xFF020617)
 
 private val MONO = FontFamily.Monospace
+
+/** The banner face. DEFAULT_CONFIG asks for "ChunkyBlocky", which is not a real
+ *  distributable family — and Android only ships five built-in families (Roboto,
+ *  Noto Serif, monospace, cursive), none of them chunky. So the closest open face
+ *  is bundled instead: Audiowide (SIL OFL), a heavy rounded-square techno display
+ *  face, which is what the reference logo actually looks like. Verified to carry
+ *  every glyph the banner needs, Ø included.
+ *
+ *  Swapping it later is a one-liner: drop another .ttf in res/font/ and change the
+ *  resource id here. Only the banner uses it — body copy stays monospace, which
+ *  the operator confirmed was already correct. */
+private val LOGO_FONT = FontFamily(Font(R.font.audiowide))
 
 private enum class Glyph { MONITOR, CHAT, SETTINGS, TERMINAL, ARCHIVES, HORIZONS }
 
@@ -414,17 +428,15 @@ private fun HeaderBanner() {
                 logoText("MØ[)u14R", big),
                 color = Color(0xFF5EEAD4),
                 fontSize = big,
-                fontFamily = MONO,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp,
+                fontFamily = LOGO_FONT,
+                letterSpacing = 0.5.sp,
             )
             Text(
                 logoText("_11(", small),
                 color = C_MONITOR,
                 fontSize = small,
-                fontFamily = MONO,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp,
+                fontFamily = LOGO_FONT,
+                letterSpacing = 0.5.sp,
             )
         }
 

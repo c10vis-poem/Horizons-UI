@@ -55,9 +55,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.horizons.HorizonsApplication
@@ -142,15 +145,22 @@ fun HomeGrid(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // Motto — ONE unbroken line, Google Sans Code at regular
-                // weight. Deliberately not ExtraBold: at this size the heavy
-                // cut fights the wordmark above it. Swap Normal → Light for a
-                // thinner line.
+                // Motto — ONE line, two font runs: "Pioneer_Tech," in Google
+                // Sans Code, "(Next-Gen Certified)" in Orbitron to echo the
+                // wordmark above it. Both runs share the same size/weight so
+                // the switch reads as a typeface change, not an emphasis jump.
+                // Single narrow space between runs — squeezed tight on purpose.
                 Text(
-                    "*Pioneer_Tech,  (Next-Gen Certified)",
-                    fontFamily = GoogleSansCode,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 18.sp,
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontFamily = GoogleSansCode, fontWeight = FontWeight.Normal)) {
+                            append("*Pioneer_Tech,")
+                        }
+                        append(" ")
+                        withStyle(SpanStyle(fontFamily = Orbitron, fontWeight = FontWeight.Normal)) {
+                            append("(Next-Gen Certified)")
+                        }
+                    },
+                    fontSize = 16.sp,
                     letterSpacing = 0.sp,
                     color = HorizonsColors.PrimaryTeal,
                     maxLines = 1,

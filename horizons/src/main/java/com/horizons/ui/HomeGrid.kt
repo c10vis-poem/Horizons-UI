@@ -108,13 +108,20 @@ private const val LOGO_BRACKET_SCALE = 0.60f  // V5: brackets down to ~cap heigh
 private const val CRYSTAL_SCALE = 1.42f       // V5: up from 1.20
 private val STATUS_NODE = 36.dp
 
+/** Bleed room around each card so its border glow can spill OUTWARD. The card keeps
+ *  its CARD_W x CARD_H footprint; only the box around it grows, and the offsets
+ *  below already subtract it, so the cards land where they did before. Cord anchors
+ *  are measured off the card body, so they follow this automatically. */
+private val GLOW_PAD = 10.dp
+
 // Tile placement inside the clock wheel. V5 spreads them — top row up, bottom row
-// down — which is what frees the middle for the crystal.
+// down — which is what frees the middle for the crystal. The bottom/side numbers
+// carry a +GLOW_PAD correction for the bleed room added above.
 private val TOP_MID_Y = 4.dp
 private val TOP_SIDE_Y = 34.dp
-private val BOT_MID_Y = 0.dp
-private val BOT_SIDE_Y = (-52).dp
-private val SIDE_X = 10.dp
+private val BOT_MID_Y = 10.dp        // 0dp visual + GLOW_PAD
+private val BOT_SIDE_Y = (-42).dp    // -52dp visual + GLOW_PAD
+private val SIDE_X = 0.dp            // 10dp visual - GLOW_PAD
 
 private val BG_DARK = Color(0xFF020406)
 private const val STARS = 180
@@ -171,11 +178,16 @@ private val TILES = listOf(
         Glyph.HORIZONS, Panel.Horizons, 0.78f, 1f, 32f, 68f),    // 10:00
 )
 
-/** Centre of the pedestal disc in the crystal viewBox. Cords run past their socket
- *  toward this point, so they finish under the platform instead of on its rim. */
+/** Centre of the pedestal disc in the crystal viewBox.
+ *
+ *  Each cord ends at ITS OWN socket node, nudged only a hair toward this centre —
+ *  just far enough that the round stroke cap slips under the platform disc instead
+ *  of poking out past the node. It must stay small: pulling the ends further in
+ *  makes all six converge on one point in the middle, which is wrong. The six nodes
+ *  sit spaced around the platform rim and each cord terminates beneath its own. */
 private const val PLATFORM_CX = 50f
 private const val PLATFORM_CY = 74f
-private const val CORD_TUCK = 0.42f
+private const val CORD_TUCK = 0.08f
 
 // ---------------------------------------------------------------------------------
 // Root
@@ -520,14 +532,39 @@ private fun TileCard(
 
     Box(
         modifier
-            .width(CARD_W)
-            .height(CARD_H + protrude),
+            .width(CARD_W + GLOW_PAD * 2)
+            .height(CARD_H + protrude + GLOW_PAD),
         contentAlignment = Alignment.TopCenter,
     ) {
+        // ---- outward border glow --------------------------------------------
+        // Concentric rounded-rect strokes stepping OUTWARD from the card edge into
+        // the bleed room. Nothing is drawn inside the card, so the edge reads as
+        // lit from behind rather than as an inner rim.
+        Canvas(Modifier.fillMaxSize()) {
+            val pad = GLOW_PAD.toPx()
+            val l = pad
+            val t = protrude.toPx()
+            val w = CARD_W.toPx()
+            val h = CARD_H.toPx()
+            val r12 = 12.dp.toPx()
+            for (i in 4 downTo 1) {
+                val e = i * (pad / 4f)
+                drawRoundRect(
+                    tile.color,
+                    Offset(l - e, t - e),
+                    Size(w + e * 2f, h + e * 2f),
+                    CornerRadius(r12 + e),
+                    alpha = 0.16f / i,
+                    style = Stroke(pad / 2.2f),
+                )
+            }
+        }
+
         // ---- card body -------------------------------------------------------
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
+                .padding(bottom = GLOW_PAD)
                 .width(CARD_W)
                 .height(CARD_H)
                 .onGloballyPositioned { c ->
@@ -539,33 +576,13 @@ private fun TileCard(
                 }
                 .clip(RoundedCornerShape(12.dp))
                 .background(tile.bg)
+                .border(1.dp, tile.color.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onClick,
                 ),
         ) {
-            // Glowing border: a bright hairline plus softer passes inside it, so the
-            // edge reads as lit rather than merely drawn.
-            Canvas(Modifier.fillMaxSize()) {
-                val r12 = 12.dp.toPx()
-                drawRoundRect(
-                    tile.color, Offset.Zero, size, CornerRadius(r12), alpha = 0.55f,
-                    style = Stroke(1.dp.toPx()),
-                )
-                for (i in 1..3) {
-                    val inset = i * 1.6f * density
-                    drawRoundRect(
-                        tile.color,
-                        Offset(inset, inset),
-                        Size(size.width - inset * 2f, size.height - inset * 2f),
-                        CornerRadius((r12 - inset).coerceAtLeast(0f)),
-                        alpha = 0.13f / i,
-                        style = Stroke(1.6f * density),
-                    )
-                }
-            }
-
             Column(
                 Modifier
                     .fillMaxSize()

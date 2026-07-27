@@ -78,7 +78,7 @@ class CliffordService : Service() {
         // Init Breadcrumb in this process too so last() can read boot.log.
         com.horizons.core.diag.Breadcrumb.install(this)
         com.horizons.core.diag.Breadcrumb.drop("CliffordService_started")
-        startForeground(NOTIF_ID, buildNotification())
+        startForeground(NOTIF_ID, buildNotification(readCrumbFromDisk = false))
         startCrs()
         return START_STICKY
     }
@@ -289,7 +289,12 @@ class CliffordService : Service() {
 
     // ── Notification ──────────────────────────────────────────────────────────
 
-    private fun buildNotification(): Notification {
+    /** [readCrumbFromDisk] = false keeps this off storage entirely. Pass false
+     *  on the startForeground() path: Android kills the process if that call
+     *  doesn't land within 10s of service start, so nothing on that path may
+     *  do file I/O. The first notification shows this process's own in-memory
+     *  crumb; the next updateState() fills in the cross-process one. */
+    private fun buildNotification(readCrumbFromDisk: Boolean = true): Notification {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
@@ -300,7 +305,8 @@ class CliffordService : Service() {
         // Surface the most recent app-lifecycle breadcrumb in the notification
         // body so the user can see WHERE the main process died without opening
         // the app or pulling logs.
-        val crumb = com.horizons.core.diag.Breadcrumb.last()
+        val crumb = if (readCrumbFromDisk) com.horizons.core.diag.Breadcrumb.last()
+                    else com.horizons.core.diag.Breadcrumb.lastInMemory()
         val expanded = "${state.label}\nlast: $crumb"
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)

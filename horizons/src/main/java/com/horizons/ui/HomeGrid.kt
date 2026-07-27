@@ -6,6 +6,7 @@ import android.media.AudioTrack
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -221,9 +222,11 @@ fun HomeGrid(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             ) {
+                // Padding trimmed 10→4 and the label gap 10→4. The orbs keep
+                // their full size; all the height came back out of dead space.
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(vertical = 10.dp),
+                    modifier = Modifier.padding(vertical = 4.dp),
                 ) {
                     Text(
                         "// SYSTEM_STATUS",
@@ -231,7 +234,7 @@ fun HomeGrid(
                         fontSize = 9.sp,
                         color = HorizonsColors.PrimaryTeal.copy(alpha = 0.35f),
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -245,7 +248,7 @@ fun HomeGrid(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
         }
 
         // ── Goat Easter egg overlay ─────────────────────────────────────────
@@ -347,7 +350,10 @@ private fun ClockWheel(
         WheelTile(Panel.Horizons,  "HORIZONS", "/about",     "credits",   "\$_.home",   HorizonsColors.TileHorizons,  TileType.HORIZONS,  0.208f, 0.285f),
     )
     val hubX = 0.5f
-    val hubY = 0.44f
+    // Raised from 0.44: the crystal's apex should meet the bottom edge of the
+    // flanking tiles, so the hub reads as centred inside the wheel rather than
+    // sagging below it.
+    val hubY = 0.415f
 
     BoxWithConstraints(modifier = modifier) {
         val w = maxWidth
@@ -375,32 +381,50 @@ private fun ClockWheel(
             Canvas(modifier = Modifier.fillMaxSize()) { drawCoreHubCrystal() }
         }
 
-        // Hub label — // CORE_HUB (top), ROUTER (white), $_Statio
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        // Hub label — // CORE_HUB (top), ROUTER (white), $_Statio.
+        // Shrink-wrapped to its text and pushed clear of the crystal: at the
+        // old 160dp width and +58dp offset this plate sat over the lower half
+        // of the gem and masked the violet aura bleeding out of it. The plate
+        // is meant to read as a small tag under the pedestal, not a panel.
+        Box(
             modifier = Modifier
                 .width(160.dp)
-                .offset(x = w * hubX - 80.dp, y = h * hubY + 58.dp),
+                .offset(x = w * hubX - 80.dp, y = h * hubY + 66.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Text(
-                "// CORE_HUB",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                color = HorizonsColors.TileRouter.copy(alpha = 0.6f),
-            )
-            Text(
-                "ROUTER",
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = Color.White,
-            )
-            Text(
-                "\$_Statio",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                color = HorizonsColors.TileRouter.copy(alpha = 0.7f),
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF0A0518).copy(alpha = 0.88f))
+                    .border(
+                        width = 1.dp,
+                        color = HorizonsColors.TileRouter.copy(alpha = 0.30f),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    "// CORE_HUB",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 8.sp,
+                    color = HorizonsColors.TileRouter.copy(alpha = 0.6f),
+                )
+                Text(
+                    "ROUTER",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    letterSpacing = 1.sp,
+                    color = Color.White,
+                )
+                Text(
+                    "\$_Statio",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 8.sp,
+                    color = HorizonsColors.TileRouter.copy(alpha = 0.7f),
+                )
+            }
         }
 
         // The six tiles, placed on the clock face

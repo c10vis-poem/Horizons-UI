@@ -47,10 +47,8 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -58,9 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.horizons.R
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.horizons.Panel
@@ -104,7 +100,6 @@ import kotlin.math.sqrt
 private val CARD_W = 114.dp                   // kept: operator likes the tile size
 private val CARD_H = 138.dp                   // kept
 private val ICON_SZ = 68.dp                   // up from 60
-private const val LOGO_BRACKET_SCALE = 0.60f  // brackets down to ~cap height
 private const val CRYSTAL_SCALE = 1.42f       // up from 1.20
 private val STATUS_NODE = 28.dp               // was 36 — "no reason for it to be that fat"
 
@@ -171,17 +166,23 @@ private val SLATE_950 = Color(0xFF020617)
 
 private val MONO = FontFamily.Monospace
 
-/** The banner face. DEFAULT_CONFIG asks for "ChunkyBlocky", which is not a real
- *  distributable family — and Android only ships five built-in families (Roboto,
- *  Noto Serif, monospace, cursive), none of them chunky. So the closest open face
- *  is bundled instead: Audiowide (SIL OFL), a heavy rounded-square techno display
- *  face, which is what the reference logo actually looks like. Verified to carry
- *  every glyph the banner needs, Ø included.
- *
- *  Swapping it later is a one-liner: drop another .ttf in res/font/ and change the
- *  resource id here. Only the banner uses it — body copy stays monospace, which
- *  the operator confirmed was already correct. */
-private val LOGO_FONT = FontFamily(Font(R.font.audiowide))
+/** Banner faces, confirmed on-device and superseding the Audiowide guess this file
+ *  shipped with: Orbitron (SIL OFL) for the wordmark AND for "(Next-Gen Certified)"
+ *  in the strapline — the operator wanted that phrase echoing the logo — and Google
+ *  Sans Code (OFL) for "Pioneer_Tech," which the operator wanted thinner than the
+ *  wordmark. Each is a single variable-font file; the two weights below are pinned
+ *  via XML font-family resources (res/font/*.xml → fontVariationSettings), not
+ *  Compose's FontVariation API, which is @ExperimentalTextApi and this module
+ *  compiles opt-in violations as errors. Body copy stays monospace. */
+private val ORBITRON = FontFamily(
+    Font(R.font.orbitron_regular, FontWeight.Normal),
+    Font(R.font.orbitron_extrabold, FontWeight.ExtraBold),
+)
+private val GOOGLE_SANS_CODE = FontFamily(
+    Font(R.font.google_sans_code_light, FontWeight.Light),
+    Font(R.font.google_sans_code_regular, FontWeight.Normal),
+    Font(R.font.google_sans_code_bold, FontWeight.Bold),
+)
 
 private enum class Glyph { MONITOR, CHAT, SETTINGS, TERMINAL, ARCHIVES, HORIZONS }
 
@@ -433,18 +434,6 @@ private fun AstralBackdrop(modifier: Modifier = Modifier) {
 // Header banner
 // ---------------------------------------------------------------------------------
 
-/** Brackets and parens in a monospace face run full ascender-to-descender, so they
- *  tower over the caps. Scale just those glyphs back to roughly cap height. */
-private fun logoText(raw: String, base: TextUnit): AnnotatedString = buildAnnotatedString {
-    raw.forEach { ch ->
-        if (ch in "[](){}") {
-            withStyle(SpanStyle(fontSize = base * LOGO_BRACKET_SCALE)) { append(ch) }
-        } else {
-            append(ch)
-        }
-    }
-}
-
 @Composable
 private fun HeaderBanner() {
     val d = LocalDensity.current
@@ -458,29 +447,39 @@ private fun HeaderBanner() {
     ) {
         Spacer(Modifier.height(2.dp))
 
+        // Plain strings here, not logoText()'s bracket-shrink treatment: that
+        // helper compensates for monospace brackets/parens running full
+        // ascender-to-descender, which is a monospace-specific problem Orbitron
+        // doesn't have. The operator approved this wordmark exactly as-is —
+        // one uniform size, no per-glyph scaling — so this matches that build.
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                logoText("MØ[)u14R", big),
+                "MØ[)u14R",
                 color = Color(0xFF5EEAD4),
                 fontSize = big,
                 lineHeight = big * 1.05f,
-                fontFamily = LOGO_FONT,
-                letterSpacing = 0.5.sp,
+                fontFamily = ORBITRON,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.sp,
             )
             Text(
-                logoText("_11(", small),
+                "_11(",
                 color = C_MONITOR,
                 fontSize = small,
                 lineHeight = small * 1.05f,
-                fontFamily = LOGO_FONT,
-                letterSpacing = 0.5.sp,
+                fontFamily = ORBITRON,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.sp,
             )
         }
 
         Spacer(Modifier.height(1.dp))
 
+        // Split-font strapline: "Pioneer_Tech," in Google Sans Code (thinner —
+        // Normal, not the wordmark's ExtraBold), "(Next-Gen Certified)" in
+        // Orbitron to echo the logo above it. Gap tightened per operator note.
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -488,15 +487,15 @@ private fun HeaderBanner() {
                 color = Color(0xFF5EEAD4),
                 fontSize = sloganSp,
                 lineHeight = sloganSp * 1.05f,
-                fontFamily = MONO,
-                fontWeight = FontWeight.Bold,
+                fontFamily = GOOGLE_SANS_CODE,
+                fontWeight = FontWeight.Normal,
             )
             Text(
-                logoText("(Next-Gen Certified)", sloganSp),
+                "(Next-Gen Certified)",
                 color = Color(0xFF99F6E4),
                 fontSize = sloganSp,
                 lineHeight = sloganSp * 1.05f,
-                fontFamily = MONO,
+                fontFamily = ORBITRON,
                 fontWeight = FontWeight.ExtraBold,
             )
         }

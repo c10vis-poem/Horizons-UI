@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Orbitron variable font pinned to wght 800 — the wordmark weight. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font
+        android:font="@font/orbitron_variable"
+        android:fontStyle="normal"
+        android:fontVariationSettings="'wght' 800"
+        android:fontWeight="800" />
+</font-family>

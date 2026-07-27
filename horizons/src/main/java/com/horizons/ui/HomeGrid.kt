@@ -463,6 +463,7 @@ private fun HeaderBanner() {
                 logoText("MØ[)u14R", big),
                 color = Color(0xFF5EEAD4),
                 fontSize = big,
+                lineHeight = big * 1.05f,
                 fontFamily = LOGO_FONT,
                 letterSpacing = 0.5.sp,
             )
@@ -470,6 +471,7 @@ private fun HeaderBanner() {
                 logoText("_11(", small),
                 color = C_MONITOR,
                 fontSize = small,
+                lineHeight = small * 1.05f,
                 fontFamily = LOGO_FONT,
                 letterSpacing = 0.5.sp,
             )
@@ -485,6 +487,7 @@ private fun HeaderBanner() {
                 "*Pioneer_Tech,",
                 color = Color(0xFF5EEAD4),
                 fontSize = sloganSp,
+                lineHeight = sloganSp * 1.05f,
                 fontFamily = MONO,
                 fontWeight = FontWeight.Bold,
             )
@@ -492,6 +495,7 @@ private fun HeaderBanner() {
                 logoText("(Next-Gen Certified)", sloganSp),
                 color = Color(0xFF99F6E4),
                 fontSize = sloganSp,
+                lineHeight = sloganSp * 1.05f,
                 fontFamily = MONO,
                 fontWeight = FontWeight.ExtraBold,
             )
@@ -501,7 +505,9 @@ private fun HeaderBanner() {
             "HORIZONS // V4",
             color = C_MONITOR.copy(alpha = 0.5f),
             fontSize = with(d) { 9.dp.toSp() },
+            lineHeight = with(d) { 9.dp.toSp() } * 1.05f,
             fontFamily = MONO,
+            maxLines = 1,
             textAlign = TextAlign.End,
             modifier = Modifier
                 .fillMaxWidth()
@@ -642,6 +648,7 @@ private fun TileCard(
                     tile.name,
                     color = tile.color,
                     fontSize = with(d) { TITLE_DP.toSp() },
+                    lineHeight = with(d) { TITLE_DP.toSp() } * 1.05f,
                     fontFamily = MONO,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
@@ -685,6 +692,7 @@ private fun TileCard(
                         tile.cmd,
                         color = tile.color,
                         fontSize = with(d) { CMD_DP.toSp() },
+                        lineHeight = with(d) { CMD_DP.toSp() } * 1.05f,
                         fontFamily = MONO,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -694,6 +702,7 @@ private fun TileCard(
                         "⚙",
                         color = tile.color.copy(alpha = 0.6f),
                         fontSize = with(d) { CMD_DP.toSp() },
+                        lineHeight = with(d) { CMD_DP.toSp() } * 1.05f,
                         fontFamily = MONO,
                         maxLines = 1,
                     )
@@ -926,8 +935,17 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
             ) { drawCrystal() }
         }
 
-        // ROUTER plate — hangs below the crystal without displacing it, and sized
-        // down again toward the reference's compact proportions.
+        // ROUTER plate — hangs below the crystal without displacing it.
+        //
+        // The plate was rendering roughly 3x taller than its own text needed,
+        // reading as an oversized empty box. Cause: Text() merges only the
+        // parameters you pass onto Material3's default style, and this Column
+        // never set lineHeight — so every line kept the THEME's body-text line
+        // height (tuned for ~14-16sp) even though the actual text here is 6-11dp.
+        // A 7dp-tall line of text was still reserving a ~16sp-tall box around
+        // itself, and three of those stacked boxes is what made the plate balloon.
+        // Every line below pins lineHeight to its own size so the box hugs the
+        // glyphs instead of the theme's default leading.
         val d = LocalDensity.current
         Column(
             Modifier
@@ -936,13 +954,14 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
                 .clip(RoundedCornerShape(6.dp))
                 .background(Color(0xFF0A0518).copy(alpha = 0.92f))
                 .border(1.dp, VIOLET.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 7.dp, vertical = 2.dp),
+                .padding(horizontal = 7.dp, vertical = 3.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 "// CORE_HUB",
                 color = Color(0xFFC4B5FD),
                 fontSize = with(d) { 7.dp.toSp() },
+                lineHeight = with(d) { 8.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -951,17 +970,21 @@ private fun RouterHub(onClick: () -> Unit, onHubBounds: (Rect) -> Unit) {
                 "ROUTER",
                 color = Color.White,
                 fontSize = with(d) { 11.dp.toSp() },
+                lineHeight = with(d) { 12.dp.toSp() },
                 fontFamily = MONO,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp,
                 maxLines = 1,
+                modifier = Modifier.padding(top = 1.dp),
             )
             Text(
                 "\$_Statio",
                 color = Color(0xFFC4B5FD).copy(alpha = 0.8f),
                 fontSize = with(d) { 6.dp.toSp() },
+                lineHeight = with(d) { 7.dp.toSp() },
                 fontFamily = MONO,
                 maxLines = 1,
+                modifier = Modifier.padding(top = 1.dp),
             )
         }
     }
@@ -1170,6 +1193,7 @@ private fun StatusNodes() {
             "// SYSTEM_STATUS",
             color = C_MONITOR.copy(alpha = 0.5f),
             fontSize = with(d) { 8.dp.toSp() },
+            lineHeight = with(d) { 8.dp.toSp() } * 1.05f,
             fontFamily = MONO,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
@@ -1228,6 +1252,7 @@ private fun StatusNodes() {
                         node.label,
                         color = if (node.active) node.color else Color(0xFF475569),
                         fontSize = with(d) { STATUS_LABEL_DP.toSp() },
+                        lineHeight = with(d) { STATUS_LABEL_DP.toSp() } * 1.05f,
                         fontFamily = MONO,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,

@@ -140,5 +140,8 @@ GPU sub-graphs throttle to background frequency without the boost.
 | Maturity | Newer, less documented | Mature, well-documented |
 | Our status | Not built | Scaffolded (`daemon/src/`, CI-built) |
 
-**Current plan:** ort_engine built first (more docs, broader compatibility).
-Genie can be explored later if ORT+QNN EP latency is insufficient.
+**SUPERSEDED (2026-07-27):** this line said "ort_engine built first, Genie
+explored later" — that plan flipped. Per CLAUDE.md's session-19 Standing
+Decisions: GenieX on QAIRT/HTP is now the actual path; ort_engine is legacy,
+still in the repo, not the way forward. Read CLAUDE.md for the current
+decision, not this line.

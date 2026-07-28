@@ -710,6 +710,15 @@ work.
 
 ## Hard Rules
 
+- **`HomeGrid.kt` IS FROZEN as of commit `984b061` on `claude/homegrid-v5-tuned`
+  (2026-07-27, "ROUTER plate down 24dp") — operator-confirmed as the final,
+  correct layout/design.** No agent or session touches
+  `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` past that commit for
+  ANY reason — not a layout tweak, not a "small" fix, not even a
+  build-critical/CI-breaking fix — without the operator's explicit
+  go-ahead first. If this file is implicated in a CI failure or any other
+  issue: stop, report it to the operator, and wait for sign-off. Do not
+  push a fix to it unilaterally, even a pure syntax/compile fix.
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)

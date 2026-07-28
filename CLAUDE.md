@@ -223,10 +223,11 @@ above already cover.
 
 ### How to brief every sub-agent
 Every sub-agent prompt must include:
-- Repo: `c10vis-poem/Novus-Agenti`, and the correct branch for the track
-  (`claude/project-scope-review-lf615p` for compile work, PR #4;
-  `claude/notice-agent-ui-local-xa14op` for app/UI-fork work — see the
-  resume prompt above for the current PR number; sae7cy/PR #15 is merged)
+- Repo: `c10vis-poem/Novus-Agenti`, and the correct branch for the track —
+  `claude/obsidian-wiki-termox-updates-ranhud` for app/UI work (the one
+  active branch as of session 20; supersedes the older
+  `claude/notice-agent-ui-local-xa14op` name), `claude/project-scope-review-lf615p`
+  for compile work (PR #4, dormant). sae7cy/PR #15 is merged, don't reuse it.
 - Instruction to read CLAUDE.md before acting
 - The exact task (not open-ended)
 - What NOT to do (no commits to main, no pushing other branches)
@@ -272,10 +273,21 @@ App package: `com.horizons`. Codebase: **Omni Claw** banner.
 
 - **`c10vis-poem/Novus-Agenti`** — THE canonical repo. All commits, pushes, CI, artifacts go here.
 - **`M0DU14R-SYSx-inc/NeuroOmni.Vag-Agenti`** — REFERENCE-ONLY. Never push, commit, or modify.
-- **One active branch**: `claude/notice-agent-ui-local-xa14op` (app/UI-fork
-  work). `claude/project-scope-review-lf615p` (compile, PR #4) exists but is
+- **One active branch**: `claude/obsidian-wiki-termox-updates-ranhud` —
+  operator confirmed directly (session 20) this is the only branch that
+  carries the actual UI right now. This **supersedes** every earlier branch
+  named in this file, including `claude/notice-agent-ui-local-xa14op` (the
+  branch this file called "the one active branch" through session 19) —
+  that name is now stale, left below only so a session doesn't mistake an
+  old reference to it for current instruction. Not re-derived from a code
+  diff this session, just the operator's direct statement — a future
+  session can verify against the branch's actual content if there's ever
+  reason to doubt it, but shouldn't second-guess it without cause.
+  `claude/project-scope-review-lf615p` (compile, PR #4) exists but is
   dormant — see the resume prompt above and `wiki/COMPILE-PIPELINE.md`.
-  `sae7cy`/PR #15 is merged; do not reuse it.
+  `sae7cy`/PR #15 is merged; do not reuse it. Many other `claude/*` branches
+  exist on the remote from past sessions/experiments — none of them are
+  "the" active branch unless the operator says otherwise.
 
 ---
 

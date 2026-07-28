@@ -129,8 +129,9 @@ build_order:
 daemon_binaries:
   genie_x:
     use_for: [qwen3_5_9b]
-    source: github.com/qualcomm/GenieX (geniex serve, OpenAI wire :18181/v1)
-    status: not yet forked/wired — see wiki/GENIEX-DAEMON-PLAN.md
+    source: github.com/qualcomm/GenieX, forked to c10vis-poem/GenieX (July 14)
+    status: forked, not yet wired into the app daemon layer — see wiki/GENIEX-DAEMON-PLAN.md
+      and EXECUTIONS.md P1.3/P2.1 (DaemonLauncher only launches ort_engine today)
   ort_engine:
     use_for: [qwen3_5_9b, qwen3_vl_8b_thinking, gemma4_12b_qat]
     source: onnxruntime_qnn_ep_aarch64_android

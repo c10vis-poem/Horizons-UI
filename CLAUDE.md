@@ -494,7 +494,7 @@ and the voice loop (`.gameBoosted()`).
 
 ---
 
-## State of the Union — 2026-07-20 (session 19)
+## State of the Union — 2026-07-28 (session 20)
 
 This is the current-state doc, rewritten in place each session. The
 **running work list is `EXECUTIONS.md` — the build dock** (code-anchored,
@@ -505,6 +505,77 @@ history, not here.
 **Visual work is NOT tracked here.** The home-dock redesign lives only in
 `wiki/HOME-REDESIGN-SPEC.md` + `wiki/home-redesign-img/`, read only when doing
 V-track work. (Earlier SOTUs let a visual saga dominate this file; stripped.)
+
+### Session 20 — planning only, paused low on credits, NOT approved by operator
+
+This session read the Drive folder `3. Horizons Ui defined` in full (four
+docs: the brainstorming master doc, the 2026-07-17 on-device debug log, and
+the formal Four Rooms / Seven-Tile spec) to pin down the fuse-box
+architecture's actual parameters — Four Parameters (Engine/Fuel/Road/
+Communication), Four Rooms (Terminal/Settings/Monitor/Router), fluid slots
+(not fixed at 3), the "no dead ends" rule, and the 5-check `greenLight`
+(adds Handshake Validation to the 4 in the earlier blueprint). None of this
+contradicts `knowledge/omni-claw-defined/workbench/` — it's the same canon
+with more of the "why," not new law.
+
+**Corrected a stale fact repeated in three places:** GenieX is **already
+forked** to `c10vis-poem/GenieX` (July 14) — CLAUDE.md's Standing Decisions
+and Pending #1, and `compile/manifest.yaml`'s `daemon_binaries.genie_x.status`,
+all said "not yet forked." Fixed in place this session. The real remaining
+GenieX work was always the wiring, not the fork — see EXECUTIONS.md P2.1
+(also corrected there this session).
+
+**Re-read 10 core files fresh** (RouterPane, MonitorPane, SettingsPane,
+TerminalPanel, RuntimeDefStore, NpuClient, DaemonLauncher, CliffordService,
+DaemonSttClient, DaemonTtsClient) to check session 19's claim that the
+fuse-box was "built as UI + validation only, never executes." That claim
+now reads as **too pessimistic**: `RouterPane.switchOn()` does re-run
+greenLight and does flip `RUNNING`; `MonitorPane`'s "hand to Router" really
+does construct a `RouterConfig` from a validated `RuntimeDef`. What's
+actually true — confirmed independently and it matches EXECUTIONS.md P1.3
+exactly — is narrower: **`DaemonLauncher`/`NpuClient`/`CliffordService` only
+know how to launch one binary** (`ort_engine`, hardcoded port 8080). Flipping
+Router to any other def (geniex, a user-defined runtime) sets status
+`RUNNING` but the daemon that actually launches is still always ort_engine.
+That single hardcode is what's blocking GenieX, a user-added llama-server
+def, the voice-layer daemon, and the Termux bridge all at once — EXECUTIONS.md
+P1.3/P1.4/P2.5 already had this exactly right; this session's read just
+independently confirmed it rather than finding anything new.
+
+**Operator's build ask this session** (their words, condensed): ship with
+an active voice layer when plugged in; let a Termux-side agent hit the
+NPU/HTP backend by having the app run as a localhost server (llama-server
+was named specifically — it's already on-device); a cloud-inference option
+(API key in, streaming, tied to the WebView browser); model upload from
+device folders (already exists) and model download via both terminal and
+browser; the browser moved out of Terminal's tab strip into its own tab
+inside Monitor, reading as a separate page, not a nested tab.
+
+**A 7-track build plan was drafted**, ordered exactly as: (1) generalize
+the daemon launch path [foundation, = EXECUTIONS.md P1.3/1.4], (2) GenieX +
+llama-server as `RuntimeDef`s [= P2.1/2.5], (3) cloud-inference toggle +
+a network-shaped `greenLight` check, (4) the voice-layer media daemon
+(nothing listens on :8091 today — biggest real build), (5) relocate the
+browser into Monitor, (6) model download (mostly a docs gap, Library scan
+already watches the right folders), (7) the "open with → Horizons" file
+routing bug (flagged verify-first, not diagnosed blind — `ModelImportActivity`
+wasn't in this session's read). Published as an artifact, not committed —
+**no app code was touched this session.**
+
+**Unresolved — read this before doing anything on the plan above:** the
+operator pushed back on the plan ("it sure as hell isn't the smoothest
+operation or the best way to go about that") but declined to say which part
+when asked directly (dismissed the clarifying question). **Do not start
+implementing the 7-track plan next session without first getting the
+operator to say what specifically they didn't like** — guessing and
+building anyway risks redoing work. Ask early in the next session, before
+touching any file.
+
+Session ended here — operator said they were about to run out of credit
+and asked for a clean stopping point + resume prompt. No commits this
+session beyond the three stale-fact fixes above (CLAUDE.md, EXECUTIONS.md,
+compile/manifest.yaml) — those alone are worth pushing even though the
+build plan itself is on hold.
 
 ### Session 19 — canon made explicit + build dock created
 
@@ -588,9 +659,11 @@ or retire it with the operator before assuming a single active branch.
 - **Runtime: GenieX on the QAIRT/HTP SDK backend**, wired to a separate
   detached daemon (`geniex serve`, OpenAI-compatible wire on `:18181/v1`).
   `ort_engine` is the legacy runtime — real, CI-built, still in the repo,
-  not the Qwen3.5-9B path going forward. `GenieX` (`github.com/qualcomm/GenieX`)
-  is NOT yet forked into `c10vis-poem` — that's the next real runtime step.
-  Full detail: `wiki/GENIEX-DAEMON-PLAN.md`.
+  not the Qwen3.5-9B path going forward. `GenieX` is **already forked** to
+  `c10vis-poem/GenieX` (pushed July 14) — do NOT re-fork. What's still
+  missing is wiring `geniex serve` behind the `geniex` `RuntimeDef` in the
+  app (`DaemonLauncher`/`CliffordService` only launch `ort_engine` today —
+  see EXECUTIONS.md P1.3/P2.1). Full detail: `wiki/GENIEX-DAEMON-PLAN.md`.
 - **Never invent priority.** The operator's labels and ordering ARE the
   priority. Don't reorder, re-scope, or substitute your own judgement. If
   unsure what's next, ask.
@@ -601,14 +674,17 @@ or retire it with the operator before assuming a single active branch.
 
 ### Pending — in order
 
-1. **GenieX fork + wire** — fork `qualcomm/GenieX` → `c10vis-poem/GenieX`,
-   then work `wiki/GENIEX-DAEMON-PLAN.md`'s next-steps list. Per
+1. **GenieX wire-in** — already forked (`c10vis-poem/GenieX`, July 14), do
+   NOT re-fork. Work `wiki/GENIEX-DAEMON-PLAN.md`'s next-steps list: wire
+   `geniex serve` behind the `geniex` `RuntimeDef` (see EXECUTIONS.md
+   P1.3/P2.1 — this is blocked on generalizing `DaemonLauncher` off its
+   ort_engine hardcode first). Per
    `knowledge/device-inventory/DEVICE-INVENTORY.md`, the device already has
    the prebuilt `geniex-bench-android-arm64 v0.3.14` (both GGML and QAIRT
    backends) + the Q4_0 GGUF + HTP v79 libs sitting in
    `/storage/emulated/0/Download/` as of 2026-07-13 — don't re-download,
    re-verify what's there first. Once wired, update `compile/manifest.yaml`'s
-   `daemon_binaries.genie_x.status` (currently "not yet forked/wired").
+   `daemon_binaries.genie_x.status` (currently "not yet forked/wired" — also stale).
 2. **Real media-daemon binary** — Moonshine STT + Kokoro/Sherpa TTS as a
    detached process on `127.0.0.1:8091`; currently only client-side
    contracts exist (`DaemonSttClient`, `DaemonTtsClient`), nothing binds

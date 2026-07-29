@@ -57,6 +57,39 @@
 
 ---
 
+## 🔒 CODE FREEZE — the home screen does NOT change without the operator
+
+**As of 2026-07-29, the operator has explicitly frozen the app.** The home
+screen currently on device matches the target
+(`wiki/home-redesign-img/01-target-full-home.webp`) and the working APK is
+built from commit `de752ca7b7a3e4c778ece039fdb89ac1c5a6caa6` on
+`claude/obsidian-wiki-termox-updates-ranhud`. This is the reference build.
+
+**Do not modify anything under `horizons/`, `daemon/`, or
+`.github/workflows/build-apk.yml` — for ANY reason, including a task that
+looks unrelated — without stopping and getting explicit sign-off from the
+operator first.** This is broader than the usual "ask before risky
+actions" guidance: it applies even to changes that would normally be
+routine (a rename, a lint fix, a "harmless" refactor).
+
+**Why this is more fragile than it looks:** `build-apk.yml` rebuilds and
+overwrites the single `latest-debug` GitHub Release on **every push to any
+branch that triggers it** — not just app-code pushes. A docs-only commit
+still triggers a rebuild (confirmed session 20: two CLAUDE.md-only commits
+each re-triggered the workflow and republished `horizons.apk`). The rebuild
+itself is harmless *as long as the source under `horizons/`/`daemon/`
+hasn't changed* — but there is currently no separate, protected copy of
+the known-good APK. If app code ever does change and gets pushed, the next
+CI run silently replaces the one binary that has the correct home screen,
+with no rollback copy. Until a pinned/immutable release exists as a real
+backup, treat the live `latest-debug` asset as irreplaceable.
+
+If a task genuinely requires touching UI or daemon code, the correct
+sequence is: stop, describe exactly what would change and why, and wait for
+the operator to say yes — not "make the change and mention it afterward."
+
+---
+
 ## /memory — Slash Command
 
 Type `/memory` in any Claude Code session to reload full project context.
@@ -798,6 +831,13 @@ work.
 
 ## Hard Rules
 
+- **CODE FREEZE (session 20, operator directive): do not touch `horizons/`,
+  `daemon/`, or `.github/workflows/build-apk.yml` for any reason without
+  explicit sign-off first.** The home screen is correct right now and the
+  operator does not want it changing — see `§CODE FREEZE` near the top of
+  this file for the full reasoning (the rolling `latest-debug` release has
+  no backup copy, so any push that touches these paths risks overwriting
+  the one known-good build with no way back).
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)

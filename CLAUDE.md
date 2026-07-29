@@ -156,10 +156,21 @@ Type `/memory` in any Claude Code session to reload full project context.
    general Pending list
 4. **Hygiene check** — before AND after every push (not a full repo audit
    every session — see `§Hygiene Protocol` below for the actual scope)
-5. **Document** — before ending: update `## State of the Union` in this
-   file **in place** (no separate handoff file — see `§Cache Prompting`'s
-   file-edit-batching rule for when in the session this should happen),
-   then commit AND push. A local-only commit is invisible to the next
+5. **Document** — before ending, both of these, not just the first:
+   a. Update `## State of the Union` in this file **in place** (no separate
+      handoff file — see `§Cache Prompting`'s file-edit-batching rule for
+      when in the session this should happen).
+   b. **Check every skill actually used or touched this session** —
+      `skills/*/SKILL.md`, especially operator-authored ones — and update
+      any that are now stale, wrong, or missing something this session
+      learned. Do not skip this because "the SOTU covers it" — a skill
+      that duplicates stale content, or that should have captured a new
+      lesson and didn't, is a real gap even if CLAUDE.md itself is
+      accurate. This has been asked for verbally across multiple prior
+      sessions and never written down as an enforced step until now —
+      that gap was on the process, not on the operator having to keep
+      repeating it. It's a rule now, not a reminder.
+   Then commit AND push both. A local-only commit is invisible to the next
    session.
 
 ### Hygiene Protocol — lightweight, tied to every push, not a one-off audit

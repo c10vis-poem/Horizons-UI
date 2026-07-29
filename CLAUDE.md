@@ -59,11 +59,29 @@
 
 ## 🔒 CODE FREEZE — the home screen does NOT change without the operator
 
-**As of 2026-07-29, the operator has explicitly frozen the app.** The home
-screen currently on device matches the target
-(`wiki/home-redesign-img/01-target-full-home.webp`) and the working APK is
-built from commit `de752ca7b7a3e4c778ece039fdb89ac1c5a6caa6` on
-`claude/obsidian-wiki-termox-updates-ranhud`. This is the reference build.
+**As of 2026-07-29, the operator has explicitly frozen the app.** The
+correct home screen — found after three wrong guesses this session, do not
+re-litigate — is commit `984b0610cf90fe9800941d7811f51371ee044b06` on
+branch **`claude/homegrid-v5-tuned`** ("HomeGrid: ROUTER plate down 24dp
+(net, correcting the anchor drift)" — this is the literal last change made
+to it, confirmed independently by the operator in a prior session before
+this one). It is **not** on `claude/obsidian-wiki-termox-updates-ranhud`
+(the working/docs branch — has the old home screen) and **not**
+`claude/app-redesign-layered-t55d47` / PR #22 (an earlier, superseded
+redesign attempt). Neither of those two is the reference build. Only
+`claude/homegrid-v5-tuned` @ `984b0610` is.
+
+**Where to actually get it right now:** that commit's CI run
+(`30275959131`) succeeded and produced a GitHub Actions artifact named
+`horizons-release` (39 MB, contains `horizons.apk`), valid until
+**2026-10-25**:
+https://github.com/c10vis-poem/Horizons-UI/actions/runs/30275959131
+— requires being logged into GitHub in the browser to download (Actions
+artifacts aren't public download links like Release assets). **There is
+currently no permanent/pinned Release copy of this build** — no tool
+available this session could create one (release-asset upload wasn't in
+the available toolset). Download the artifact and keep a copy somewhere
+safe before Oct 25; don't rely on GitHub's retention alone.
 
 **Do not modify anything under `horizons/`, `daemon/`, or
 `.github/workflows/build-apk.yml` — for ANY reason, including a task that
@@ -72,17 +90,19 @@ operator first.** This is broader than the usual "ask before risky
 actions" guidance: it applies even to changes that would normally be
 routine (a rename, a lint fix, a "harmless" refactor).
 
-**Why this is more fragile than it looks:** `build-apk.yml` rebuilds and
-overwrites the single `latest-debug` GitHub Release on **every push to any
-branch that triggers it** — not just app-code pushes. A docs-only commit
-still triggers a rebuild (confirmed session 20: two CLAUDE.md-only commits
-each re-triggered the workflow and republished `horizons.apk`). The rebuild
-itself is harmless *as long as the source under `horizons/`/`daemon/`
-hasn't changed* — but there is currently no separate, protected copy of
-the known-good APK. If app code ever does change and gets pushed, the next
-CI run silently replaces the one binary that has the correct home screen,
-with no rollback copy. Until a pinned/immutable release exists as a real
-backup, treat the live `latest-debug` asset as irreplaceable.
+**CI no longer clobbers other branches' builds (fixed session 20):**
+`build-apk.yml` used to publish every branch's build to the same shared
+`latest-debug` release tag — meaning a push to *any* branch (even an
+unrelated docs commit on a different branch) would silently overwrite
+whatever APK was there, including a correct one. This is exactly what
+destroyed visibility into the `homegrid-v5-tuned` build in the first
+place. Fixed: the publish step now tags each branch's build separately
+(`debug-<branch-name>`, slashes replaced with dashes), so branches can
+never overwrite each other's releases again. This does NOT retroactively
+restore anything already lost — it only stops future cross-branch
+clobbering. The `homegrid-v5-tuned` branch itself hasn't been rebuilt under
+this fixed workflow (it hasn't been pushed to since `984b0610`), so its
+only current copy is the Actions artifact linked above, not a Release.
 
 If a task genuinely requires touching UI or daemon code, the correct
 sequence is: stop, describe exactly what would change and why, and wait for
@@ -833,11 +853,11 @@ work.
 
 - **CODE FREEZE (session 20, operator directive): do not touch `horizons/`,
   `daemon/`, or `.github/workflows/build-apk.yml` for any reason without
-  explicit sign-off first.** The home screen is correct right now and the
-  operator does not want it changing — see `§CODE FREEZE` near the top of
-  this file for the full reasoning (the rolling `latest-debug` release has
-  no backup copy, so any push that touches these paths risks overwriting
-  the one known-good build with no way back).
+  explicit sign-off first.** The correct home screen is
+  `claude/homegrid-v5-tuned` @ `984b0610` — see `§CODE FREEZE` near the top
+  of this file for the full reasoning and where to actually download it
+  (a GitHub Actions artifact, not a Release — no pinned Release copy exists
+  yet).
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)
@@ -855,13 +875,18 @@ work.
 - AGP 8.8.0 · Kotlin 2.1.0 · compileSdk 35 · minSdk 31 · JDK 17 · arm64-v8a only
 - Signing: `release/debug.keystore` (committed by design)
 - `build-apk.yml` cross-compiles `ort_engine` (daemon/) via CMake/NDK,
-  builds the APK, publishes both plus `libonnxruntime.so` to a
-  `latest-debug` GitHub Release. Publish target already defaults to
-  this repo (`softprops/action-gh-release@v2` has no `repository:`
-  override) — an old TODO here claiming otherwise could not be verified
-  as still real; if a CI run's release step actually misfires, check
-  the repo's Settings → Actions → General → Workflow permissions first
-  (that's what broke it once this session, not the publish-target).
+  builds the APK, publishes both plus `libonnxruntime.so`. Triggers on
+  push to **any** branch (`branches: ['**']`). **Changed session 20:** used
+  to publish every branch's build to one shared `latest-debug` tag, so any
+  branch's push silently overwrote every other branch's release — this is
+  what buried the correct `homegrid-v5-tuned` build. Now each branch
+  publishes to its own `debug-<branch-name>` tag (slashes → dashes), so
+  branches can no longer clobber each other. Publish target already
+  defaults to this repo (`softprops/action-gh-release@v2` has no
+  `repository:` override) — an old TODO here claiming otherwise could not
+  be verified as still real; if a CI run's release step actually misfires,
+  check the repo's Settings → Actions → General → Workflow permissions
+  first (that's what broke it once this session, not the publish-target).
 
 ---
 

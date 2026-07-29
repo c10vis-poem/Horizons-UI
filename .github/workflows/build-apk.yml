@@ -100,11 +100,11 @@ jobs:
           path: out/*
           if-no-files-found: error
 
-      - name: Publish "latest-debug" release (stable download URL)
+      - name: Publish per-branch debug release (stable download URL, no cross-branch clobber)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest-debug
-          name: latest-debug (auto)
+          tag_name: debug-${{ replace(github.ref_name, '/', '-') }}
+          name: 'debug (${{ github.ref_name }}) — auto'
           body: |
             Auto-built from ${{ github.sha }} on ${{ github.ref_name }}.
             ort_engine + libonnxruntime.so go to /data/local/tmp/ on device.

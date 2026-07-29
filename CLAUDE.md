@@ -4,7 +4,19 @@
 >
 > ```
 > Project: Novus Agenti (Omni Claw) — fully on-device agentic AI assistant.
-> Canonical repo: c10vis-poem/Novus-Agenti.
+> Canonical repo: c10vis-poem/Novus-Agenti, renamed on GitHub to
+> c10vis-poem/Horizons-UI (same repo, old name still redirects).
+>
+> 🔒 CODE FREEZE — READ BEFORE TOUCHING ANYTHING: the operator has frozen
+> horizons/, daemon/, and .github/workflows/build-apk.yml. Do not modify
+> any of them for any reason without explicit sign-off first, even for a
+> task that looks unrelated. The correct home screen is commit 984b0610
+> ("ROUTER plate down 24dp"), permanently mirrored on branch
+> FROZEN-correct-home-screen-984b0610 (read-only, do not delete or push to
+> it) — the APK is a permanent public download at
+> https://github.com/c10vis-poem/Horizons-UI/releases/tag/debug-FROZEN-correct-home-screen-984b0610.
+> claude/obsidian-wiki-termox-updates-ranhud (the working/docs branch) has
+> the OLD home screen — do not confuse the two. Full detail: §CODE FREEZE.
 >
 > WHAT THIS IS: the Horizons Workbench — an on-device agentic assistant that
 > is a manual, modular "workbench," NOT a black box. Core law: "Daemons stay

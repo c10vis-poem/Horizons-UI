@@ -71,17 +71,23 @@ this one). It is **not** on `claude/obsidian-wiki-termox-updates-ranhud`
 redesign attempt). Neither of those two is the reference build. Only
 `claude/homegrid-v5-tuned` @ `984b0610` is.
 
-**Where to actually get it right now:** that commit's CI run
-(`30275959131`) succeeded and produced a GitHub Actions artifact named
-`horizons-release` (39 MB, contains `horizons.apk`), valid until
-**2026-10-25**:
-https://github.com/c10vis-poem/Horizons-UI/actions/runs/30275959131
-— requires being logged into GitHub in the browser to download (Actions
-artifacts aren't public download links like Release assets). **There is
-currently no permanent/pinned Release copy of this build** — no tool
-available this session could create one (release-asset upload wasn't in
-the available toolset). Download the artifact and keep a copy somewhere
-safe before Oct 25; don't rely on GitHub's retention alone.
+**PERMANENT download link (use this one):**
+https://github.com/c10vis-poem/Horizons-UI/releases/tag/debug-FROZEN-correct-home-screen-984b0610
+
+That commit (`984b0610`) was pushed to its own dedicated branch,
+`FROZEN-correct-home-screen-984b0610`, specifically so it gets this
+permanent, non-expiring Release under the per-branch tagging scheme
+below — no other branch can ever share that tag name, so nothing can
+overwrite it. **Do not delete or force-push this branch.** No GitHub
+login required to download — it's a normal public Release asset, unlike
+a workflow artifact.
+
+(Superseded reference, kept for history only: the same commit is also
+reachable via `claude/homegrid-v5-tuned`'s original CI run `30275959131`,
+which produced a GitHub Actions artifact — that one expires 2026-10-25
+and requires GitHub login to fetch. Use the permanent Release link above
+instead; there's no reason to use the artifact now that the Release
+exists.)
 
 **Do not modify anything under `horizons/`, `daemon/`, or
 `.github/workflows/build-apk.yml` — for ANY reason, including a task that
@@ -326,16 +332,26 @@ App package: `com.horizons`. Codebase: **Omni Claw** banner.
 
 - **`c10vis-poem/Novus-Agenti`** — THE canonical repo. All commits, pushes, CI, artifacts go here.
 - **`M0DU14R-SYSx-inc/NeuroOmni.Vag-Agenti`** — REFERENCE-ONLY. Never push, commit, or modify.
-- **One active branch**: `claude/obsidian-wiki-termox-updates-ranhud` —
-  operator confirmed directly (session 20) this is the only branch that
-  carries the actual UI right now. This **supersedes** every earlier branch
-  named in this file, including `claude/notice-agent-ui-local-xa14op` (the
-  branch this file called "the one active branch" through session 19) —
-  that name is now stale, left below only so a session doesn't mistake an
-  old reference to it for current instruction. Not re-derived from a code
-  diff this session, just the operator's direct statement — a future
-  session can verify against the branch's actual content if there's ever
-  reason to doubt it, but shouldn't second-guess it without cause.
+- **CORRECTION, later in session 20:** this file briefly claimed
+  `claude/obsidian-wiki-termox-updates-ranhud` was "the only branch that
+  carries the actual UI right now" — that was wrong. It carries the OLD
+  home screen. The actual correct home screen is a different branch
+  entirely; see `§CODE FREEZE` at the top of this file for the real
+  reference (`FROZEN-correct-home-screen-984b0610`, a permanent copy of
+  `claude/homegrid-v5-tuned` @ `984b0610`). Lesson: "confirmed by the
+  operator" isn't the same as "verified against the actual build" —
+  three branches were checked and rejected before the right one was found.
+- **Working/docs branch**: `claude/obsidian-wiki-termox-updates-ranhud` is
+  still where session commits and doc updates land (this file, EXECUTIONS.md,
+  CI fixes) — it is NOT where the correct home-screen code lives. Don't
+  conflate "the branch we commit to" with "the branch with the right UI."
+  This supersedes the older `claude/notice-agent-ui-local-xa14op` name from
+  session 19, which is stale.
+- **`FROZEN-correct-home-screen-984b0610`** — do not delete, do not
+  force-push, do not add commits to it. It exists only to anchor a
+  permanent Release link (see `§CODE FREEZE`). Treat it as read-only.
+  `claude/homegrid-v5-tuned` is the original branch this commit came from;
+  both point at the same commit right now.
   `claude/project-scope-review-lf615p` (compile, PR #4) exists but is
   dormant — see the resume prompt above and `wiki/COMPILE-PIPELINE.md`.
   `sae7cy`/PR #15 is merged; do not reuse it. Many other `claude/*` branches

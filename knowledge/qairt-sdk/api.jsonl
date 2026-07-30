@@ -1,0 +1,1 @@
+{"id": "api-001", "section": "exception", "heading": "Exception", "content": "```\nclass Exception : public std::exception\n```\n\nLast Published: Jul 02, 2026", "source_urls": [], "tags": ["qnn", "api"]}

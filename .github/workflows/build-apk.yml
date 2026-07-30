@@ -100,10 +100,14 @@ jobs:
           path: out/*
           if-no-files-found: error
 
+      - name: Compute per-branch release tag (no cross-branch clobber)
+        id: reltag
+        run: echo "tag=debug-${GITHUB_REF_NAME//\//-}" >> "$GITHUB_OUTPUT"
+
       - name: Publish per-branch debug release (stable download URL, no cross-branch clobber)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: debug-${{ replace(github.ref_name, '/', '-') }}
+          tag_name: ${{ steps.reltag.outputs.tag }}
           name: 'debug (${{ github.ref_name }}) — auto'
           body: |
             Auto-built from ${{ github.sha }} on ${{ github.ref_name }}.

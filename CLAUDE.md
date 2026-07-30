@@ -65,6 +65,15 @@
 > doc; EXECUTIONS.md is the running build dock. After reading: state SOTU +
 > next dock item, then wait. HF_TOKEN / QAI_HUB_API_TOKEN come from the
 > environment config (§Tokens) — already exported. Never hardcode them.
+>
+> ALSO — this account has a global /root/.claude/CLAUDE.md (applies across
+> all repos, not just this one). It names termux-helper, technical-builder-
+> style, and memory-as-skill as living skills to update automatically at
+> session end, no verbal request needed — read it. The memory-as-skill
+> system separately has skills/memory-as-skill/memory/active/novus-agenti.md
+> — a cross-session anchor for this project (state, code-freeze pointer,
+> the correct-home-screen commit) — update it too at session end alongside
+> this file's own SOTU, per that skill's own rules.
 > ```
 
 ---

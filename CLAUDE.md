@@ -267,6 +267,15 @@ work.
 
 ## Hard Rules
 
+- **`HomeGrid.kt` IS FROZEN at commit `984b061`** (2026-07-27, "ROUTER plate
+  down 24dp") — operator-confirmed as the final, correct layout. No agent or
+  session touches `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` for ANY
+  reason — not a layout tweak, not a "small" fix, not even a build-critical or
+  CI-breaking fix — without the operator's explicit go-ahead. If it is
+  implicated in a failure: stop, report, wait for sign-off.
+  Icebox copies (blob `618cf4b6`): `FROZEN-correct-home-screen-984b0610`,
+  `claude/homegrid-v5-tuned`, `RELEASE-correct-home-screen-984b0610`.
+  Earlier snapshot: `claude/homegrid-v5-SNAPSHOT-good-1837dc2` (`725306d`).
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)

@@ -5,330 +5,253 @@
 > ```
 > Project: Novus Agenti (Omni Claw) — on-device agentic AI assistant.
 > App repo: c10vis-poem/Horizons-UI   Vault: c10vis-poem/OBSIDIAN-Master_Wiki
-> Protocol: c10vis-poem/aesop        Termux CLI: c10vis-poem/claude-code-android
+> Runtime:  c10vis-poem/aesop         Termux CLI: c10vis-poem/claude-code-android
+> Device:   Motorola Razr Ultra 2025 · SM8750 · 16GB · Hexagon HTP v79. PHONE ONLY.
 >
-> ### FIRST: git branch -a. DO NOT ASSUME main IS THE BASE.
-> `main` does NOT contain the working home screen. The correct base is
-> RELEASE-correct-home-screen-984b0610 (= frozen 984b061 + 2 CI-only commits).
-> The two lineages differ in app code ONLY in HomeGrid.kt + its 2 fonts.
-> HomeGrid.kt is OPERATOR-FROZEN at 984b061 — do not touch it, for any reason,
-> including a CI-breaking fix, without explicit sign-off.
-> Active branch (both repos): claude/app-crash-landing-yc955p
-> Horizons-UI PR #32 (draft, base = RELEASE-correct-home-screen-984b0610).
-> APK: releases/tag/debug-claude-app-crash-landing-yc955p -> horizons.apk
+> ### 0. HOW TO NOT WASTE THE OPERATOR'S TIME
+> They have ~2,000 pages of Qualcomm/stack documentation and have forked or
+> downloaded everything this project needs. If you think something is missing or
+> undocumented, YOU HAVEN'T FOUND IT YET. Go look. Do not report their own
+> inventory back to them as a discovery.
+>  - VENDOR DOCS OUTRANK EVERY SUMMARY IN THESE REPOS, INCLUDING THIS FILE.
+>  - DO NOT STOP AT THE FIRST FILE. The QAIRT manual alone is 7 sections
+>    (Overview, Api, Backend, Context, Graph, Tensor, HTP). knowledge/qairt-sdk/
+>    has 5; Overview+Tensor are only in the vault at
+>    #AESOP_HORIZONS-UI_Master/(AESOP.]build/#QAIRT_main/#QAIRT/.
+>  - READ THE FOLDER, NOT THE FILE. Siblings go deeper on different parts;
+>    numbered folders are conversation series. Same-named files ACROSS folders
+>    are byte-identical (verified) — depth is in the siblings BESIDE a file.
+>  - The PDFs list their own library tree at the top. If you spot a path to a
+>    doc that isn't here, ASK — the operator can download it in minutes.
+>  - Terse operator replies are NOT confirmation of whatever you just wrote.
+>    Confirm what they're answering before building on it.
 >
-> ### WHAT THIS IS
-> A manual, modular workbench, NOT a black box. Core law: "Daemons stay dumb,
-> the user is the loader" — boots EMPTY and stable; nothing runs until the user
-> flips a fuse. Seven tiles feed a center-hub Router.
+> ### 1. RUNTIME TRUTH — read before saying ANYTHING about backends
+> EVERYTHING TARGETS THE NPU VIA HEXAGON HTP. There is no CPU-vs-NPU split by
+> file format, and NOTHING NEEDS COMPILING. Two independent paths reach HTP:
+>   PATH A: AI Hub asset -> GenieX runtime -> HTP.
+>           Restricted: you CANNOT drop an arbitrary GGUF into GenieX.
+>           `qai-hub-models fetch <Model> --runtime geniex_llamacpp --precision q4_0`
+>           AI Hub publishes ready-to-deploy assets; Gemma-4-E4B-it is one.
+>   PATH B: ANY GGUF -> llama.cpp/ggml -> HTP, BYPASSING GenieX entirely.
+>           This is the general-purpose path. ggml has a Hexagon backend and
+>           the compiled libs are in the vault at
+>           #AESOP.../##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/ :
+>           libggml-hexagon.so + libggml-htp-v73/v75/v79/v81.so (device = v79).
+> Corollaries that keep getting broken:
+>  - "ggml" DOES NOT MEAN "CPU". Reading it that way is THE most repeated error
+>    in this project. DEVICE-INVENTORY.md says it plainly: GenieX ships dual
+>    backends, llama.cpp (ggml, HTP v68-v81 + CPU + OpenCL) AND QAIRT.
+>  - QAT != QAIRT. QAT is how weights were quantized (gemma-4-E4B-it-qat-q4_0-
+>    gguf). QAIRT is the runtime. A QAT GGUF still lands on HTP.
+>  - The compile pipeline is a DORMANT FALLBACK for ONE model (Qwen3.5-9B).
+>    It is not a prerequisite for anything.
+>  - ORT/ONNX IS THE VOICE LAYER ONLY. It was never the LLM path. Do not
+>    describe the LLM stack in terms of ORT.
+>  - GenieX ships as a Maven Central Android SDK with prebuilt arm64-v8a native
+>    libs — NO NDK, NO CMake. minSdk 27, requires SM8750/SM8850. It pulls
+>    weights from HF/AI Hub itself. Reference app: qualcomm/ai-hub-apps (forked).
 >
-> AUTHORITY MODEL (operator, 2026-07-31) — the circuit is IN SERIES:
->   Settings = supply (assets/keys). Can hand a config to the Router.
->              NO authority to run it.
->   Terminal = writes the fuse spec (parameters only). Never executes.
->   Monitor  = THE SWITCH IN THE LOOP. Verifies wiring. Open/loose => no
->              circuit, however perfect the fuse. Stores nothing, DISPATCHES.
->   Router   = fuse box + breaker. Carries current. Doesn't argue.
-> Validation must be LIVE at flip time (a series switch has no memory), but the
-> check belongs to the MONITOR. RouterPane.switchOn() currently re-implements it
-> instead of consulting it — that is the one real defect. The operator EXPLICITLY
-> REJECTED the Router as hardened gatekeeper; the gate is the Monitor's.
+> ### 2. WHAT THIS IS — the Four Rooms (spec, not paraphrase)
+> A manual, modular workbench, NOT a black box. Boots EMPTY and stable.
+> THE SPEC IS "Horizons Project: Architecture & Inference Build Map", in
+> (AESOP) REPO.data_bank/(1a)-Horizons.Ui-defined/1. brainstorming and
+> conceptualization master document. Copy of 2026-07-18.md — READ IT, don't
+> paraphrase it from here. Flow is strictly ONE-WAY: DEFINE -> VALIDATE -> EXECUTE.
+>   Terminal (Mod Garage)  — where a runtime is DEFINED. The fuse. Pure params.
+>                            Exports to Settings/Archives or ships to Monitor.
+>   Settings (Pantry/VAULT)— landing zone for raw ingredients: binaries, keys,
+>                            tokens, .gguf. THE SETTINGS TILE *IS* THE VAULT.
+>   Monitor  (Library)     — THE CHECKPOINT. Static greenLight checklist,
+>                            NO network calls, NO side effects. "ALL GREEN"/"N RED".
+>   Router   (Plate/Fuse)  — completed configs get plated. Refuses to turn on
+>                            unless every param is satisfied AT execution time.
+>   Archives               — real file manager, ArchiveStore on filesDir/archive.
+> RUNTIME DEFINITION PROTOCOL (the 10-Amp Fuse) — four properties, always:
+>   1. binaryName   — the engine. `ort_engine` OR `geniex`. (dual runtime)
+>   2. port+health  — `:8080/health` OR `:18181/v1/models`
+>   3. argsTemplate — launch syntax, with {model} injection
+>   4. requiredAssets — mandatory companions (e.g. QNN SDK libs)
+> Assets land PASSIVELY. Monitor acknowledges and waits for the user to PLUG IN.
+> SLOT COUNTS ARE NOT FIXED AT 3: cloud API = 3 (endpoint/key/model), terminal
+> script = 1, on-device CLI = 0. EVERY slot in EVERY room must offer a manual
+> escape hatch (add / upload / plug in / write a script).
+> A config carries its own target: file-backed (path) · localhost (port) ·
+> cloud (endpoint + key ref). Only file-backed needs storage; localhost and
+> cloud need no download, no registry, and never touch the WebView.
 >
-> ### THE CRASH (why this branch exists)
+> ### 3. THE FUSE METAPHOR GOT BUILT — this is a defect, not a feature
+> "Flip a fuse" was DESCRIPTIVE LANGUAGE about how the system is organized. A
+> past session implemented it literally: RouterPane has onRun -> switchOn(), and
+> CliffordService's idle notification literally instructs the user to "flip a
+> fuse in the Router." Per the operator's own model the Router has NO authority
+> to run anything. Do not build further on the literal reading.
+> Worse, switchOn() (:79-93) doesn't start anything anyway — it re-runs
+> greenLight, calls setStatus(RUNNING), then llmRuntime.preWarm(), and
+> preWarm() (:28) is an EMPTY STUB. The flip writes a flag to router_configs.json
+> and returns. CliffordService discovers it up to 15s later on a poll loop.
+> Nothing dispatches. EXECUTIONS.md 1.1/1.2 graded this MISSING EXECUTION long
+> ago and it was never built.
+>
+> ### 4. THE CRASH
 > Symptom: crashes ~90s after landing, worse each launch, "still trying to
-> connect." FIXED + CI green (unverified on device):
+> connect." FIXED + CI green, STILL UNVERIFIED ON DEVICE:
 >  - FailureMonitor.install() built a full report SYNCHRONOUSLY ON THE MAIN
 >    THREAD in Application.onCreate(), walking every crash + log file.
->  - Every "tail" read was really readText()/readLines() on the WHOLE file.
->  - Breadcrumb crash.log had NO cap and NO rotation.
+>  - Every "tail" was really readText()/readLines() on the WHOLE file.
+>  - crash.log had NO cap and NO rotation.
 >    => closed loop: crash -> bigger log -> heavier boot -> more crashes.
 >  - CliffordService runs in :clifford, so its RouterConfigStore was a DIFFERENT
->    INSTANCE that loaded once in init and never re-read => a Router flip in the
->    UI was permanently invisible to the launcher. Fixed via reloadIfChanged().
-> STILL UNPROVEN: the trigger of the FIRST ~90s crash. Prime suspect is Android
-> LMK (leaves NO stack trace) — Kokoro pulls ~200MB at boot then loads a 326MB
-> ONNX in-process. Read the log IN THE APP: Artifacts tile (ArtifactsPane.kt:223
-> renders Breadcrumb.readAll(), boot.log + crash.log, with refresh).
-> DO NOT tell the operator to tail it from Termux — VERIFIED DEAD 2026-07-31:
-> Android 11+ blocks /sdcard/Android/data/<pkg>/ to every other app and
-> MANAGE_EXTERNAL_STORAGE is explicitly excluded, so the cd just fails. See the
-> termux-mobile-dev skill.
-> Stack trace present => JVM exception. Empty but app died => killed from
-> outside (LMK/FGS), and no trace will ever appear. boot.log lines are now
-> tagged [main]/[clifford] so "did :clifford come up?" is answerable.
+>    INSTANCE that never re-read => a Router flip was invisible to the launcher.
+>    Fixed via reloadIfChanged().
+> STILL UNPROVEN: the trigger of the FIRST ~90s crash.
+> READ THE LOG IN THE APP: Artifacts tile (ArtifactsPane.kt:223 renders
+> Breadcrumb.readAll()). DO NOT tell the operator to tail it from Termux —
+> VERIFIED DEAD 2026-07-31: Android 11+ blocks /sdcard/Android/data/<pkg>/ to
+> every other app and MANAGE_EXTERNAL_STORAGE is explicitly carved out.
+> boot.log lines are tagged [main]/[clifford].
 >
-> ### PHASE 1 SCOPE (operator): the app must run its WebView browser, its voice
-> layer, and a backend for the Termux agent. NOT about hosted models.
->  - Browser: DONE — moved to Monitor, shared component, links open new tabs.
+> ### 5. PHASE 1 SCOPE (operator): browser · voice · Termux backend
+> NOT about hosted models.
+>  - Browser: DONE. In Monitor, shared component, new tabs + OAuth popups work.
 >  - Monitor pop-out tabs CONSOLE/TERMINAL/BROWSER: DONE.
->  - Voice: BROKEN IN THE MIDDLE. TTS works in-process (sherpa AAR). STT points
->    at 127.0.0.1:8091 and NOTHING BINDS IT, so the loop falls back to
->    llmRuntime.streamAudio and looks like a model problem. It isn't.
->    FIX = run Moonshine STT in-process on the AAR already shipping.
->  - Termux backend: DOES NOT EXIST. The app has ZERO inbound listeners.
->    NOTE: the app-spawned daemon already binds 127.0.0.1:8080 under the app's
->    UID and Termux shares loopback — so NPU access needs no inversion. What
->    Termux can't get on its own is mic/voice/WebView-OAuth. That's the listener.
+>  - Voice: BROKEN BY DESIGN, NOT BY BUG. There is no STT component. Every voice
+>    path calls app.llmRuntime.streamAudio(), and LlmRuntime's default impl
+>    DISCARDS THE WAV and pipes the prompt string into the text stream. Call
+>    sites: VoiceLoopController, LiveChatService, ScreenShareService,
+>    HorizonsApplication, HorizonsRecognitionService (which replaces the SYSTEM
+>    recognizer, so this breaks other apps' voice input too). :8091 is bound by
+>    NOTHING — not AESOP, not the daemon; it was never anyone's port.
+>    FIX = Moonshine STT in-process on the sherpa AAR already shipping, as its
+>    own client. TTS already proves the in-process pattern works.
+>  - Termux backend: THE TERMUX SIDE ALREADY EXISTS. AESOP's aesopd is a
+>    WebSocket bridge on :8765 routing llm.generate to GGML (:8081) or NPU
+>    (:8080) by a `backend` field, with a wire spec at protocol/bridge-protocol.md.
+>    What's missing is the HORIZONS end of that bridge. Much smaller than
+>    "build a backend."
 >
-> ### RUNTIME TRUTH — read before saying ANYTHING about backends
-> EVERYTHING TARGETS THE NPU VIA HTP. There is no CPU-vs-NPU split by format.
->  - AI Hub has precompiled damn near everything -> QAIRT -> HTP.
->  - Not precompiled? Unsloth-quantized GGUF -> llama.cpp/ggml -> THE SAME HTP.
->    ggml has a Hexagon backend. PROOF, not opinion — compiled .so files in the
->    vault at #AESOP.../##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/ :
->    libggml-hexagon.so, libggml-htp-v73/v75/v79/v81.so (device is v79).
->    DEVICE-INVENTORY says it too: GenieX dual backends = llama.cpp (ggml,
->    HTP v68-v81 + CPU + OpenCL) AND QAIRT. Both lines end at HTP. Reading
->    "ggml" as "CPU path" is the single most repeated error in this project.
->  - NOTHING NEEDS COMPILING. The compile pipeline is a dormant fallback for
->    ONE model (Qwen3.5-9B), not a prerequisite for the stack.
->  - QAT != QAIRT. QAT is how weights were trained/quantized (gemma-4-E4B-it-
->    qat-q4_0-gguf). QAIRT is the runtime. A QAT GGUF still lands on HTP.
->  - Voice is its own plane: ORT/ONNX in-process. Not the LLM path, not QAIRT.
->
-> ### DOC AUTHORITY — the operator has 7 QAIRT manual sections, USE THEM
-> Order: Qualcomm QAIRT manual FIRST, then code, then everything else.
->  - Horizons-UI knowledge/qairt-sdk/ : htp.md (265KB), backend, context,
->    graph, api (+ htp.jsonl). Overview + Tensor are MISSING here; they are in
->    the vault at #AESOP.../(AESOP.]build/#QAIRT_main/#QAIRT/ in .mht/.pdf/.md.
->  - DO NOT STOP AT THE FIRST QAIRT FILE. There are seven sections and many
->    copies. "I read the QAIRT doc" is almost always wrong.
->  - aesop-wiki.md's "NOT on the ladder: Hexagon DSP" is FLATLY WRONG — the
->    .so files above disprove it. Never cite that file for runtime facts.
->  - FraQAT is old prior-art research. Never reach for it over the QAIRT SDK.
->  - Read the FOLDER, not the file. Siblings are not copies; they go deeper on
->    different parts. Same-named files ACROSS folders are byte-identical (that
->    is intentional cross-filing) — the depth is in the siblings BESIDE it.
->  - The operator already owns/forked everything needed. Do not report their
->    own inventory back to them as a discovery; go read it and use it.
->
-> ### KNOWN GAPS
->  - temperature is hardcoded (NpuClient:101, CloudLlmRuntime:122). Verbosity
->    HAS a Settings slider that NOTHING READS. Cores don't exist. These must
->    become real RuntimeDef params BEFORE P1.3 (runtime-agnostic launcher), or
->    the launcher gets reopened twice.
->  - greenLight() checks only 2 of the canon's 4 boxes (engine, assets). No
->    arch/RAM amperage check, no handshake check. And switchOn() SKIPS THE GATE
->    ENTIRELY when no RuntimeDef matches — so cloud/PWA/terminal configs bypass
->    the Monitor today.
+> ### 6. KNOWN GAPS
+>  - temperature hardcoded (NpuClient:101, CloudLlmRuntime:122). verbosity has a
+>    Settings slider NOTHING READS; debugLogLevel likewise. Cores don't exist.
+>    Must become real RuntimeDef params BEFORE the runtime-agnostic launcher.
+>  - resolveNpuModelPath() AUTO-SCANS models/, filesDir, /Download for the newest
+>    LLM file. EXECUTIONS.md 0.1 grades this CONTRADICTS "boots empty". It should
+>    not exist — a config carries its own target.
+>  - greenLight() checks 2 of 4 boxes. switchOn() SKIPS THE GATE ENTIRELY when no
+>    RuntimeDef matches, so cloud/PWA/terminal configs bypass it — same wrong
+>    assumption that everything is a file on disk.
+>  - BrowserPane's download listener writes to PUBLIC /Download via
+>    setDestinationInExternalPublicDir — app doesn't own it, and it lands in a
+>    directory the auto-scanner sweeps. Nothing registers for DownloadManager
+>    completion, so the app never learns a file arrived.
 >  - HomeGrid.kt:69 computes npuReady from startsWith("Adreno 830"), which the
 >    NO-BACKEND fallback string also matches. FROZEN — report, don't fix.
 >  - Two launcher icons: .MainActivity AND .uilocal.LocalHomeActivity both carry
->    MAIN/LAUNCHER. They run different code; test the tile icon. Operator asked
->    about removing the second LAUNCHER entry — not yet done.
+>    MAIN/LAUNCHER, running different code. Removing one is a pending operator call.
 >
-> ### KNOWLEDGE — Drive is the source of truth
-> Use mcp__Google_Drive__* directly; the operator's material is all there.
-> Vault repo now carries the FULL migration: 1305 files, 363 md, 96 jsonl,
-> RAG_LIBRARY + BM25 index. To pull more Drive content use the
-> drive-to-obsidian-migration skill — do NOT hand-sync.
-> Two data-bank docs are AI transcripts, not specs (the "Gemini duel" doc
-> retracts its own central claim; 2026-07-17 is one the operator calls a snow
-> job). Architecture in them is canon; implementation claims are not.
-> UI direction captured: ROUTER = stereo stack, MONITOR = arcade cabinet,
-> TERMINAL = fakesteak matrix cascade. NOT to be built yet.
+> ### 7. THE WIDER STACK (this app is one node)
+> Three-device Tailscale mesh: Razr (mobile orchestrator) · Jetson Orin Nano
+> Super (heavy inference, 500GB SSD, OB1, OmniRoute) · Rubik Pi 3 (UI/scripting
+> hub + Red Agent auditor). WebSocket router on the Jetson, not polling REST.
+> Memory layers are FOUR DISTINCT THINGS, not competitors:
+>   OB1 = persistence layer/protocol · mem0 = live extraction+pruning
+>   LLM-Wiki = conceptual knowledge graph · Reasoning Bank = execution history
+> OmniRoute = single OpenAI-compatible gateway (:20128/v1) + failover + token
+> compression. Red Agent gates TWICE: before code executes, and before
+> trajectories feed recursive KAG training. AESOP is the operator's
+> implementation tying these together. See the vault; do not re-derive.
 >
-> Use /memory to reload. HF_TOKEN / QAI_HUB_API_TOKEN come from the environment.
-> Never hardcode them.
+> HF_TOKEN / QAI_HUB_API_TOKEN come from the environment. Never hardcode them.
 > ```
 
 ---
 
 ## /memory — Slash Command
 
-Type `/memory` in any Claude Code session to reload full project context.
-
 **Sequence (all first-read = MARKDOWN; JSONL is grep-only, never first-read):**
-1. Read `CLAUDE.md` (this file, all sections, incl. the current
-   `## State of the Union` — there is no separate handoff file)
-2. Read `knowledge/omni-claw-defined/` — what the app IS + how it works
-3. Read `EXECUTIONS.md` — the build dock
-4. For anything else, use the `project-memory` skill (knowledge/ -> vault -> Drive)
-5. Produce a SOTU summary + next action, confirm before touching any file
+1. Read this file, all sections.
+2. Read `knowledge/omni-claw-defined/` — what the app IS.
+3. Read `EXECUTIONS.md` — the build dock.
+4. For anything about backends/HTP/QAIRT: **read `knowledge/qairt-sdk/` before
+   citing any summary, including this file.**
+5. For anything else, use the `project-memory` skill (knowledge/ → vault → Drive).
+6. Produce a summary + next action, confirm before touching any file.
 
 ---
 
-## State of the Union — 2026-07-31 (session 20)
+## Source trust
 
-**Repo moved.** Work is in `c10vis-poem/Horizons-UI` now, not `Novus-Agenti`.
-Vault is `c10vis-poem/OBSIDIAN-Master_Wiki`. Protocol spec is `c10vis-poem/aesop`.
+- **Vendor documentation (Qualcomm QAIRT/GenieX, Unsloth, Google) is canon.**
+- **Repo summaries — including this file — are not.** `aesop-wiki.md` asserted
+  "NOT on the ladder: Hexagon DSP," which is false and misled multiple sessions;
+  it has been corrected in the vault. Assume other summaries carry similar rot.
+- Two data-bank docs are AI transcripts, not specs (the "Gemini duel" doc
+  retracts its own central claim; `2. 2026-07-17.md` the operator calls a snow
+  job). **Architecture in them is canon; implementation claims are not.**
+- `knowledge/device-inventory/DEVICE-INVENTORY.md` is a snapshot (2026-07-13),
+  not current state. Re-verify before trusting sizes/versions.
+- **FraQAT is old prior-art research.** Never reach for it over the QAIRT SDK.
 
-### The base-branch trap — read before anything
+---
 
-`main` does **NOT** contain the working home screen. The correct base is
-**`RELEASE-correct-home-screen-984b0610`** (frozen `984b061` + 2 CI-only
-commits). The lineages differ in app code **only** in `HomeGrid.kt` + 2 fonts.
-This session started on `main` by mistake and had to re-base. **Run
-`git branch -a` before choosing a base** — there is more real work on unmerged
-branches in these repos than on `main`.
+## Hard Rules
 
-### Session 20 — crash root-caused, browser moved, vault recovered
-
-- **The diagnostics were amplifying the crash.** `FailureMonitor.install()` ran
-  a full disk-walking report **synchronously on the main thread** in
-  `onCreate()`; every "tail" read was a whole-file `readText()`/`readLines()`;
-  `crash.log` had **no cap and no rotation**. Closed loop: crash → bigger log →
-  heavier boot → more crashes. All three bounded; new `core/diag/FileTail.kt`
-  does seek-based reads. The operator called this before I did.
-- **The fuse could never reach the daemon.** `CliffordService` runs in
-  `:clifford`, so its `RouterConfigStore` was a *different instance* that loaded
-  once in `init` and never re-read — a Router flip in the UI was permanently
-  invisible to the launcher. Fixed with `reloadIfChanged()`.
-- Breadcrumbs now tagged `[main]`/`[clifford]` — "did `:clifford` come up?" is
-  finally answerable from the log.
-- **Browser moved to Monitor** as a shared `ui/browser/BrowserPane.kt`;
-  `setSupportMultipleWindows` was `false` so links could never open tabs — fixed,
-  which also unbreaks OAuth popups. Monitor gained CONSOLE/TERMINAL/BROWSER
-  pop-out tabs.
-- **PR #32 open (draft), CI green, APK published.** Not verified on device.
-- **Vault recovered.** The full Drive→Obsidian migration (1300 files, RAG library
-  46 docs/1786 chunks, BM25 index) existed unmerged on
-  `claude/drive-obsidian-migration-th115b` while `main` sat empty and four
-  `docs/mirror-*` branches carried 82 files. Merged. Vault is now 1305 files.
-
-**Still unproven:** the trigger of the first ~90 s crash. Prime suspect is
-Android **LMK** — leaves no stack trace. Needs the on-device `crash.log`.
-
-### Phase 1 (operator scope): browser · voice · Termux backend
-
-Explicitly **not** about hosted models.
-
-| Piece | State |
-|---|---|
-| WebView browser | **DONE** — in Monitor, tabs work |
-| Monitor pop-outs | **DONE** |
-| Voice layer | **BROKEN MID-CHAIN** — TTS in-process ✓, STT points at dead `:8091`. Fix: Moonshine in-process on the AAR already shipping. |
-| Termux backend | **ABSENT** — app has zero inbound listeners. Needed for mic/voice/OAuth, *not* NPU (the app-spawned daemon already binds `:8080` and Termux shares loopback). |
-
-### Authority model — LAW (operator, 2026-07-31)
-
-Series circuit, two independent authorities. **Settings** supplies and may hand
-a config to the Router but has **no authority to run it**. **Monitor is the
-switch in the loop** — stores nothing, but dispatches, and holds the verdict.
-**Router** is fuse box + breaker: carries current, doesn't argue. Validation is
-**live at flip time** (a series switch has no memory) but the check is the
-**Monitor's** — `RouterPane.switchOn()` re-implementing it is the one real
-defect. The operator **explicitly rejected** the Router-as-gatekeeper.
-
-### Next, in order
-
-1. **Moonshine STT in-process** — smallest change, closes the voice loop.
-2. **Termux backend listener** — exposes voice/mic/OAuth over loopback.
-3. **Runtime params first-class** (temperature/verbosity/cores) **before** P1.3,
-   or the launcher gets reopened twice.
-4. **P1.3** — drive `DaemonLauncher` from the flipped `RuntimeDef`.
-5. **Close the `switchOn()` bypass** — configs with no `RuntimeDef` skip the
-   gate entirely today, so cloud/PWA/terminal never reach the Monitor.
-
-### Flagged, not actioned
-
-- `HomeGrid.kt:69` reports NPU-ready for the *no-backend* fallback string.
-  **FROZEN — report only.**
-- Two launcher icons (`.MainActivity` + `.uilocal.LocalHomeActivity`) run
-  different code; confusing during triage. Removing the second `LAUNCHER` entry
-  is a pending operator call.
-- `verbosity` has a Settings slider **nothing reads**; `debugLogLevel` likewise.
+- **`HomeGrid.kt` IS FROZEN at commit `984b061`** (2026-07-27) — operator-confirmed
+  final layout. No session touches
+  `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` for ANY reason — not a
+  layout tweak, not a "small" fix, not a build-critical or CI-breaking fix —
+  without the operator's explicit go-ahead. If implicated in a failure: stop,
+  report, wait. Icebox copies (blob `618cf4b6`):
+  `FROZEN-correct-home-screen-984b0610`, `claude/homegrid-v5-tuned`,
+  `RELEASE-correct-home-screen-984b0610`. Earlier snapshot:
+  `claude/homegrid-v5-SNAPSHOT-good-1837dc2` (`725306d`).
+- **Run `git branch -a` before choosing a base.** More real work sits on unmerged
+  branches in these repos than on `main`.
+- Never push `main` without explicit permission.
+- Never `--no-verify`, `push --force`, `reset --hard` without confirming.
+- No CPU fallback in the Qwen3.5-9B path.
+- **The QAIRT manual outranks every summary here.** For any claim about
+  backends, runtimes, HTP, graphs, or context binaries, read the manual first.
+- Don't trigger the dormant compile pipeline pre-emptively — see
+  `wiki/COMPILE-PIPELINE.md`.
 
 ---
 
 ## Repo File Map
 
 ```
-c10vis-poem/Horizons-UI  (public)  — vault: c10vis-poem/OBSIDIAN-Master_Wiki
-
-CLAUDE.md                     ← THIS FILE (architecture-of-record + current SOTU)
-agents/
-  build-runner.yaml             horizons-build-runner (Android CI, separate from compile)
-  sub-agent.system.md           Novus-Agenti stack (single canonical agent brief)
-daemon/                          ort_engine C++ daemon (legacy runtime, CI-built)
-  src/engine.cpp, http_server.cpp, tokenizer.cpp, sampler.h, main.cpp
-rules/
-  AAR_DECOMPILE.md              QNN artifact inspection (archived, Nexa-era)
-  AT_BAT_PROTOCOL.md
-  CACHE_PROMPT_RULES.md
-  GIT_HYGIENE.md
+CLAUDE.md                     ← THIS FILE
+EXECUTIONS.md                   the build dock (canon-vs-code audit)
+agents/                         build-runner.yaml · sub-agent.system.md
+daemon/                         ort_engine C++ daemon (CI-built)
+rules/                          AAR_DECOMPILE · AT_BAT_PROTOCOL · CACHE_PROMPT_RULES · GIT_HYGIENE
 skills/
-  horizons-wiki/SKILL.md        architecture bundle (CLAUDE.md + daemon-reference)
-  project-memory/SKILL.md       knowledge/ corpus retrieval (two-tier)
-  termux-mobile-dev/SKILL.md
-knowledge/                       project knowledge corpus (see README.md)
-  omni-claw-defined/             ALWAYS-READ core project definition
-  research-npu/  proofs/  fragmented-qat/  google-dev-docs/  gemini-query/
-                                  Drive-mirrored, retrieve-on-demand
-  qairt-sdk/                      Drive-mirrored (QNN HTP manual, .md + .jsonl)
-  daemon-reference/               repo-native (moved from wiki/): GPT-DAEMON-REFERENCE.md,
-                                  NPU-RUNTIME-PATHS.md
-  claude-code-reference/          general Claude Code knowledge (moved from wiki/):
-                                  PROMPT-CACHING.md — reference only, hard rules are in
-                                  this file's Cache Prompting section, not there
-  device-inventory/               recovered on-device audit snapshot (2026-07-13):
-                                  DEVICE-INVENTORY.md — SDKs, model files, Termux
-                                  toolchain actually on the Razr Ultra; re-verify
-                                  before trusting exact versions/sizes
-compile/                        dormant compile-pipeline domain (was models/ + scripts/,
-                                  merged since both only ever served this one pipeline)
-  manifest.yaml                  FALLBACK ONLY — see its own header
-  compile_qwen3_5_9b.py          fallback compile script (dormant, see wiki/COMPILE-PIPELINE.md)
-  requirements-compile.txt       pip deps for the staged Colab compile
-wiki/
-  COMPILE-PIPELINE.md            dormant fallback pipeline (Single-Path Architecture,
-                                  Size Envelope, Hexagon HTP Constraints, Job 8 command)
-  GENIEX-DAEMON-PLAN.md          GenieX runtime plan + model/vision daemon split
-  JOB_EXECUTION_LOG.md           combined compile-job + strike/failure ledger
-  FEATURE-SPEC.md                UI tile spec
-  BUILD-ACTION-PLAN.md
-  research/                      reference notes on forked tools (android-reverse-engineering-skill,
-                                  claude-skills) — not project architecture, kept separate from knowledge/
-horizons/                        Android app
-  fgs/CliffordService.kt         Watchdog daemon
-  core/llm/NpuClient.kt          model+vision daemon client
-  core/stt/DaemonSttClient.kt    media daemon client (STT half)
-  core/tts/DaemonTtsClient.kt    media daemon client (TTS half, contract only)
-  core/shell/DaemonLauncher.kt
-  core/agent/AgentLoop.kt
-  uilocal/LocalHomeActivity.kt   local UI fork (session 16), additive
+  horizons-wiki/                architecture bundle
+  project-memory/               knowledge/ corpus retrieval
+  termux-mobile-dev/            VNC/Matrix env · Claude Code on Android · scoped-storage limits
+knowledge/
+  omni-claw-defined/            ALWAYS-READ core project definition
+  qairt-sdk/                    QNN HTP manual — htp/backend/context/graph/api (+htp.jsonl)
+                                MISSING: Overview, Tensor (vault only)
+  daemon-reference/             GPT-DAEMON-REFERENCE.md · NPU-RUNTIME-PATHS.md
+  device-inventory/             on-device audit snapshot 2026-07-13
+  claude-code-reference/  research-npu/  proofs/  fragmented-qat/
+  google-dev-docs/  gemini-query/
+compile/                        dormant compile-pipeline domain (fallback only)
+wiki/                           COMPILE-PIPELINE · GENIEX-DAEMON-PLAN · JOB_EXECUTION_LOG
+                                FEATURE-SPEC · BUILD-ACTION-PLAN · research/
+horizons/                       Android app
+  ui/browser/BrowserPane.kt     shared WebView browser (Monitor + Terminal)
+  ui/panels/ArtifactsPane.kt    :223 renders the boot/crash log — the on-device log viewer
+  ui/panels/RouterPane.kt       :79-93 switchOn() — see §3, does not dispatch
+  fgs/CliffordService.kt        watchdog daemon, :clifford process
+  core/diag/                    FileTail · FailureMonitor · Breadcrumb
+  core/llm/  core/stt/  core/tts/  core/shell/  core/agent/  core/state/
+  uilocal/LocalHomeActivity.kt  local UI fork (additive)
 .github/workflows/build-apk.yml
 release/debug.keystore           committed by design
 ```
-`watchdog/` was already deleted — don't look for it. There is no
-per-session handoff file (`wiki/SESSION{N}-HANDOFF.md`) or standalone
-`wiki/APP-SOTU-AUDIT.md`/`wiki/FAILURE_LOG.md` anymore — consolidated
-into this file's SOTU and `wiki/JOB_EXECUTION_LOG.md` respectively.
-`.github/workflows/build-apk.yml`'s publish-target TODO could not be
-confirmed still real (no foreign repo found hardcoded anywhere in its
-history) — verify against a live release page before assuming it needs
-work.
-
----
-
-## Hard Rules
-
-- **`HomeGrid.kt` IS FROZEN at commit `984b061`** (2026-07-27, "ROUTER plate
-  down 24dp") — operator-confirmed as the final, correct layout. No agent or
-  session touches `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` for ANY
-  reason — not a layout tweak, not a "small" fix, not even a build-critical or
-  CI-breaking fix — without the operator's explicit go-ahead. If it is
-  implicated in a failure: stop, report, wait for sign-off.
-  Icebox copies (blob `618cf4b6`): `FROZEN-correct-home-screen-984b0610`,
-  `claude/homegrid-v5-tuned`, `RELEASE-correct-home-screen-984b0610`.
-  Earlier snapshot: `claude/homegrid-v5-SNAPSHOT-good-1837dc2` (`725306d`).
-- Never push `main` without explicit user permission
-- Never `--no-verify`, `push --force`, `reset --hard` without confirming
-- No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)
-- **The QAIRT manual outranks every summary in these repos.** For any claim
-  about backends, runtimes, HTP, graphs, context binaries or NPU execution:
-  read `knowledge/qairt-sdk/` (and the vault's `#QAIRT_main/`) BEFORE citing
-  any wiki page, SOTU, handoff, or research doc — including this file. A
-  53-line summary has already been repeated over the 265KB manual sitting one
-  directory away; do not do it again. See RUNTIME TRUTH in the resume prompt.
-- LLM inference runs via an uploadable daemon binary, not in-process. This is
-  scoped to the **LLM path only** — the voice layer (sherpa-onnx Kokoro TTS,
-  and Moonshine STT once wired) runs in-process by design and is not a
-  violation of it.
-- Don't trigger the dormant compile pipeline pre-emptively — see
-  `wiki/COMPILE-PIPELINE.md` for its own hard rules (`SKIP_VISION`,
-  `max_dynamic_tensor_size_mib`), which only matter if/when that pipeline
-  actually runs
+`watchdog/` was deleted. There is no per-session handoff file.
 
 ---
 
@@ -336,14 +259,10 @@ work.
 
 - AGP 8.8.0 · Kotlin 2.1.0 · compileSdk 35 · minSdk 31 · JDK 17 · arm64-v8a only
 - Signing: `release/debug.keystore` (committed by design)
-- `build-apk.yml` cross-compiles `ort_engine` (daemon/) via CMake/NDK,
-  builds the APK, publishes both plus `libonnxruntime.so` to a
-  `latest-debug` GitHub Release. Publish target already defaults to
-  this repo (`softprops/action-gh-release@v2` has no `repository:`
-  override) — an old TODO here claiming otherwise could not be verified
-  as still real; if a CI run's release step actually misfires, check
-  the repo's Settings → Actions → General → Workflow permissions first
-  (that's what broke it once this session, not the publish-target).
+- `build-apk.yml` cross-compiles `ort_engine` via CMake/NDK, builds the APK, and
+  publishes both plus `libonnxruntime.so` to a `latest-debug` GitHub Release.
+  Publish target defaults to this repo. If a release step misfires, check
+  Settings → Actions → General → Workflow permissions first.
 
 ---
 
@@ -357,26 +276,28 @@ work.
 
 ## Termux / Mobile Rules
 
-**Device:** Motorola Razr Ultra 2025 · SM8750 · 16GB · Hexagon HTP v79. **Phone only. No laptop.**
+**Phone only. No laptop.**
 
-- No tokens or long URLs in paste-able commands
-- Shell variables: short alias then `$VAR`
+- No tokens or long URLs in paste-able commands; short alias then `$VAR`
 - Every paste-able command under ~50 chars where possible
+- Termux CANNOT read another app's `/sdcard/Android/data/<pkg>/` on Android 11+.
+  Shared storage (Music, Pictures, Downloads, DCIM) works fine — that carve-out
+  is specific to other apps' private dirs. See the `termux-mobile-dev` skill.
+- Termux is the operator's dev environment, **not a runtime dependency of the
+  app.** The app must run with nothing connected.
 
 ---
 
 ## Superseded — historical context
 
-What these were replaced *by*, on the Qwen3.5-9B path. This is a record of
-how the build got here, **not a ban list** — if one of these turns out to be
-the right tool again, that is an open question, not a rule violation.
-Other model families ship their own runtimes; this table never constrained them.
+How the build got here, **not a ban list**. If one of these turns out to be the
+right tool again, that's an open question, not a rule violation.
 
 | Old | Replaced by |
 |---|---|
-| Track 1 / Track 2 (for Qwen3.5-9B) | single path: ONNX → QNN context binary → Hexagon HTP |
-| LiteRT / LiteRT-LM (for Qwen3.5-9B) | ort_engine daemon |
-| genie_engine (for Qwen3.5-9B) | ort_engine (ORT + QNN EP) |
-| Separate Watchdog | CliffordService (CLIFFORD == Watchdog) |
-| Nexa SDK, OmniNeural | dead |
+| Track 1 / Track 2 (Qwen3.5-9B) | ONNX → QNN context binary → Hexagon HTP |
+| LiteRT / LiteRT-LM (Qwen3.5-9B) | ort_engine daemon |
+| genie_engine (Qwen3.5-9B) | ort_engine (ORT + QNN EP) |
+| Separate Watchdog | CliffordService |
+| Nexa SDK, OmniNeural | dead — though GenieX carries Nexa lineage |
 | Cloud failover in app LLM | HttpFetch agent tool |

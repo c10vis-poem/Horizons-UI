@@ -111,3 +111,64 @@ including this skill.
 `RAG_LIBRARY` including its own `_index/meta.jsonl`, which has a different
 schema. First build succeeds; every rebuild KeyErrors on `text`. Exclude
 `_index` when rebuilding.
+
+---
+
+## Document map — go to these, in this order
+
+Verified in session 21. **Incomplete by construction** — the operator has
+material this map doesn't name yet. Absence here is not evidence of absence.
+Vault paths are relative to `c10vis-poem/OBSIDIAN-Master_Wiki`.
+
+### What we are building (read FIRST, before touching UI code)
+
+| Doc | Answers | Trap |
+|---|---|---|
+| `#AESOP_HORIZONS-UI_Master/(AESOP) REPO.data_bank/(1a)-Horizons.Ui-defined/1. brainstorming and conceptualization master document. Copy of 2026-07-18.md` | **THE spec.** "Horizons Project: Architecture & Inference Build Map" — Four Rooms, DEFINE→VALIDATE→EXECUTE, Archives. Around **line 183** is the "Grandma or 5-year-old" section with the **four fuse parameters in the operator's own words**. | The Build Map text appears **twice in the same file** (~line 296 and ~line 340). Not two versions. Also: operator speech and assistant formatting alternate — the operator's paragraphs are the canon, the tidy bullet lists are a restatement. |
+| `#HORIZONS-main/Horizons UI build, [copies]/2026-07-17.md` | "Open with → Horizons" routes a file to whichever slot matches its type: `.gguf`→Model, `libgeniex.so`→Backend, binary→Runtime. | Operator calls this doc a snow job on implementation claims. Architecture only. |
+
+**The four parameters, quoted, because they get mangled every time:**
+1. **The Engine** — what makes it go. `ort_engine`, `geniex`, or a custom script.
+2. **The Fuel & Cargo** — assets. Sometimes zero, sometimes a list.
+3. **The Road & Weight Limit** — hardware/memory. The amperage limit. Stops OOM.
+4. **The Communication** — syntax AND handshake, **merged on purpose**.
+
+Do not re-split #4. Do not drop #3. Five became four deliberately, to strip out
+redundant traps and failure loops. A prior session re-expanded them and thereby
+hid the missing RAM check — the exact failure class this branch was opened for.
+
+### Runtime / backends (vendor first, always)
+
+| Doc | Answers | Trap |
+|---|---|---|
+| **GenieX README** — Drive `#QAIRT_main/#GenieX/`, 7-page PDF, **pages 3 and 6** | **THE runtime answer.** One runtime, two backends: `llama_cpp` (~any HF GGUF, NPU/GPU/CPU) and `qairt` (AI Hub per-chipset bundle, NPU only). Q4_0 = "best Hexagon NPU support". Page 5 = the Android SDK path. | **The vault `.md` of this page is the repo FILE TREE ONLY.** The README body is not in it. You must read the PDF. |
+| `#QAIRT_main/Qualcomm user-Guides/Qualcomm AI Engine Direct SDK | Qualcomm Developer.pdf` **page 3** | The official 4-layer stack: frameworks → runtimes → AI Engine Direct backend libraries (a **Kernels** row per column) → CPU/GPU/**HTP**/cDSP/HTA. | It's a **raster image**. Text search will never find it. Extract with `page.get_images()`. |
+| `#QAIRT_main/Qualcomm user-Guides/HTP - Qualcomm AI Runtime (QAIRT) SDK.pdf` | The HTP manual, 193k chars. Graph Switching, VTCM Sharing, Graph Priority, LLM native KVcache, Execute Cancellation — i.e. the primitives for resident-small + summoned-large models. | One of **7** sections. Overview and Tensor are vault-only. Never stop at the first QAIRT file. |
+| `#QAIRT_main/#QAIRT/Qualcomm AI Runtime (QAIRT) Overview...mht.md` | The hierarchy: SNPE / QNN / **GENIE** are SDKs; QAIRT API sits *beneath* them; HTP is a **backend**. GenieX descends from GENIE. | GenieX/HTP are **layers of** QAIRT, not alternatives to it. |
+| `#QAIRT_main/QAIRT-SDK/GenieX/Copy of GENIEX-DAEMON-PLAN.md` | `geniex serve` on `:18181/v1`, Kotlin SDK coords, and: AI Hub ships only **smaller** Qwen variants — the **9B on `qairt` needs BYOM-compiling**. | This is where the "dormant" compile pipeline actually connects. |
+| `##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/libggml-hexagon.so`, `libggml-htp-v73/v75/v79/v81.so` | **The magic sauce.** Physical proof ggml reaches Hexagon. Per-DSP-arch kernels; this device is **v79**. | Binaries, not docs. No grep will surface them. |
+| `#Useful_knowledge_/.../GEMINI.QUERY/A 7／04／26  QWEN 3.5 9B Q4_0.docx.md` line ~159 | `llama-cli -m …gguf --device hexagon` — the GGUF→Hexagon path as a literal command. | — |
+| Drive: `c10vis-poem/llama.cpp-npu` (345 KB) | haozixu research fork. Needs **HMX-layout weight conversion**, `REPACK_FOR_HVX`, quants Q4_0/IQ4_NL/Q8_0/F16, and **recommends <4B** — cDSP is 32-bit, single NPU session. | **44 bytes in the vault.** Read the Drive copy. Also: a research prototype, not the GenieX path. |
+
+### The wider stack (this app is one node)
+
+| Doc | Answers |
+|---|---|
+| `#AESOP_HORIZONS-UI_Master/(AESOP) REPO.data_bank/Personal Agentic Operating Stack (or a Cognitive Architecture Stack)./` | **A 1–9 numbered conversation series + `aesop-wiki.md`.** `1.` defines the four memory layers as distinct roles (OB1=persistence protocol, mem0=live extraction/pruning, LLM-Wiki=conceptual graph, Reasoning Bank=execution history). `3.` = Red Agent + the recursive KAG training loop. `4.`/`7.` = runtimes per node. `8.` = Red Agent filesystem spec (`/opt/red-agent/`, fail-closed, systemd). `9.` = OmniRoute as the single gateway. |
+| `#HORIZONS-main/Copy of final-memory-layer-p2p-pipeline.md` | The whole mesh in one doc: Tailscale topology, three-layer agent pipeline, the auditor's two gates, OmniRoute + Open-Wiki context slicing, WebSocket wire format. |
+| `#Useful_knowledge_/###Primary research and reference documentation/OMNI.CLAW_DEFINED/Omni-claw-knowledge-synthesis-architecture.md` | How OpenWiki (maintenance discipline) / OB1 (store) / reasoning-bank (retrieval strategy) layer together. §6 = Dual-Agent Talker-Reasoner = the query/executive split. |
+
+**Reading `4.` and `5.` of the numbered series will hand you the wrong phone.**
+The device is corrected mid-conversation in `6.` (Moto Razr Ultra, not RedMagic).
+The wrong hardware is still sitting in the earlier docs. This is why you read
+the folder, not the file.
+
+### Known-bad — do not cite these for facts
+
+| Doc | Status |
+|---|---|
+| `aesop-wiki.md` (2 copies) | **Was wrong**: "NOT on the ladder: Hexagon DSP". Corrected in place 2026-07-31 with a retraction note. Disproved by the `.so` files above. |
+| `#QAIRT_main/zqnn／qairt-System Design: half Gemini slop／ half useful info/` | Operator's own label. `3.md` has the GGUF-fork orchestrator diagram — **structurally useful**, but its code imports `com.qualcomm.qairt.runtime.QnnBackend` as a Kotlin package. That API does not exist; QAIRT ships C/C++. |
+| "Gemini oils up The Builder…duel" doc; `2. 2026-07-17.md` | AI transcripts. **Architecture is canon, implementation claims are not.** The duel doc retracts its own central claim mid-document. |
+| `#Useful_knowledge_/.../Fragmented QAT/` (FraQAT) | Old prior-art research. Never reach for it over the QAIRT SDK. |
+| `knowledge/device-inventory/DEVICE-INVENTORY.md` | Snapshot 2026-07-13. Re-verify sizes/versions. Its dual-backend line — llama.cpp (ggml, **HTP v68–v81** + CPU + OpenCL) — is the single most-misread sentence in the corpus. |

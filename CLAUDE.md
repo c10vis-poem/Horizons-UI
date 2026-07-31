@@ -47,8 +47,12 @@
 >    UI was permanently invisible to the launcher. Fixed via reloadIfChanged().
 > STILL UNPROVEN: the trigger of the FIRST ~90s crash. Prime suspect is Android
 > LMK (leaves NO stack trace) — Kokoro pulls ~200MB at boot then loads a 326MB
-> ONNX in-process. Get the answer on device, no laptop needed:
->   cd /sdcard/Android/data/com.horizons/files/diag && tail -40 crash.log
+> ONNX in-process. Read the log IN THE APP: Artifacts tile (ArtifactsPane.kt:223
+> renders Breadcrumb.readAll(), boot.log + crash.log, with refresh).
+> DO NOT tell the operator to tail it from Termux — VERIFIED DEAD 2026-07-31:
+> Android 11+ blocks /sdcard/Android/data/<pkg>/ to every other app and
+> MANAGE_EXTERNAL_STORAGE is explicitly excluded, so the cd just fails. See the
+> termux-mobile-dev skill.
 > Stack trace present => JVM exception. Empty but app died => killed from
 > outside (LMK/FGS), and no trace will ever appear. boot.log lines are now
 > tagged [main]/[clifford] so "did :clifford come up?" is answerable.

@@ -6,9 +6,12 @@ description: >-
   (zsh + tmux + cmatrix + Termux:Float) phone terminal. Use when a VNC
   connection from the tablet times out or is refused, when XFCE/dbus won't
   start, when stale X lock files block the server, when setting VNC geometry,
-  or when configuring the Matrix waterfall split-pane look. Every step is
-  sourced or trial-verified; killed guesses are recorded so they aren't
-  repeated.
+  or when configuring the Matrix waterfall split-pane look. Also covers
+  installing Claude Code on the phone (our claude-code-android fork), and why
+  Termux cannot read another app's files under /sdcard/Android/data on
+  Android 11+ — use when a log-pull from Termux returns "no such file or
+  directory". Every step is sourced or trial-verified; killed guesses are
+  recorded so they aren't repeated.
 ---
 
 # Termux Mobile Dev Environment
@@ -164,6 +167,68 @@ sweeps), keep architecture / multi-file reasoning on cloud Claude.
   hardcoded to Anthropic's `/v1/messages`. You'd need a proxy shim
   (`claude-code-router`, `anyclaude`). OpenClaude sidesteps the whole problem.
 - ❌ "OpenCode = OpenClaude." Different projects. OpenClaude is the one to use here.
+
+---
+
+## Claude Code on Android (native Termux, Path A)
+
+Runs the real Anthropic `claude` CLI on the phone, logged in with the operator's
+Pro account. Install from **our fork** so any changes we make live in our repo —
+the upstream README's `curl` points at `ferrumclaudepilgrim/claude-code-android`,
+which is NOT where our edits go.
+
+```bash
+R=c10vis-poem/claude-code-android
+```
+```bash
+git clone https://github.com/$R
+```
+```bash
+bash claude-code-android/install.sh
+```
+
+Then `claude` and sign in.
+
+- **Path A** = official linux-arm64 binary + `glibc-runner`/`patchelf-glibc`, ELF
+  interpreter patched so Android can load it, plus a wrapper at `$PREFIX/bin/claude`
+  that checks for new releases once a day. It is a **shim, not native support** —
+  Anthropic ships glibc-linked, Termux is Bionic.
+- **Path B** = proot-distro Ubuntu (~2 GB), official installer, `process.platform`
+  reports `linux`. Heavier but no binary patching.
+- **Path C** = AVF Linux VM. Pixel 6+/Android 16+ only. **Not supported on
+  Snapdragon**, so it is out for the Razr Ultra (SM8750).
+- ⚠️ Path A points Claude Code's own DNS lookups at `8.8.8.8`/`8.8.4.4` to dodge a
+  connectivity hang. That **overrides a VPN, split-tunnel, or Pi-hole** for those
+  queries.
+- `claude --version` reports Claude Code's version, not this repo's — it will not
+  tell you which path you are on.
+
+---
+
+## Reading another app's files from Termux — you CANNOT (Android 11+)
+
+**Verified 2026-07-31 on the Razr Ultra.** `cd /sdcard/Android/data/com.horizons/files/diag`
+returns `no such file or directory` even though the app is installed and running.
+
+Android 11+ blocks `/sdcard/Android/data/<other package>/` to every other app, and
+`MANAGE_EXTERNAL_STORAGE` is **explicitly excluded** from granting it. Termux cannot
+reach it, with or without `termux-setup-storage`. The directory may exist and be
+perfectly healthy — Termux just cannot see it.
+
+**Consequence:** any "tail the app's log from Termux" procedure is dead on arrival on
+this device, no matter how it is worded. An app must surface its own diagnostics.
+
+- Horizons does: **`ArtifactsPane`** (`ui/panels/ArtifactsPane.kt:223`) renders
+  `Breadcrumb.readAll()` — boot.log + crash.log — with a refresh control. That is the
+  supported way to read the boot trail on-device.
+- `logcat` is not an escape hatch either: unprivileged Android has restricted apps to
+  their **own** logs since Jelly Bean, so Termux cannot logcat another package.
+
+### Killed guesses
+- ❌ "The diag dir is missing, so `Breadcrumb.install()` never ran." Does not follow —
+  Termux cannot see that path at all. Absence of a listing is not absence of a file.
+- ❌ "`termux-setup-storage` / `MANAGE_EXTERNAL_STORAGE` will get us in." No.
+  `Android/data` is carved out of both.
 
 ---
 

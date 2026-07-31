@@ -104,7 +104,15 @@ Type `/memory` in any Claude Code session to reload full project context.
 
 **Sequence (all first-read = MARKDOWN; JSONL is grep-only, never first-read):**
 1. Read `CLAUDE.md` (this file, all sections, incl. the current
-   `## State of the Union — 2026-07-31 (session 20)
+   `## State of the Union` — there is no separate handoff file)
+2. Read `knowledge/omni-claw-defined/` — what the app IS + how it works
+3. Read `EXECUTIONS.md` — the build dock
+4. For anything else, use the `project-memory` skill (knowledge/ -> vault -> Drive)
+5. Produce a SOTU summary + next action, confirm before touching any file
+
+---
+
+## State of the Union — 2026-07-31 (session 20)
 
 **Repo moved.** Work is in `c10vis-poem/Horizons-UI` now, not `Novus-Agenti`.
 Vault is `c10vis-poem/OBSIDIAN-Master_Wiki`. Protocol spec is `c10vis-poem/aesop`.
@@ -190,7 +198,7 @@ defect. The operator **explicitly rejected** the Router-as-gatekeeper.
 ## Repo File Map
 
 ```
-c10vis-poem/Novus-Agenti  (public — confirmed via GitHub API, not private)
+c10vis-poem/Horizons-UI  (public)  — vault: c10vis-poem/OBSIDIAN-Master_Wiki
 
 CLAUDE.md                     ← THIS FILE (architecture-of-record + current SOTU)
 agents/

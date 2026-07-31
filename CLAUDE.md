@@ -144,8 +144,13 @@
 > SILERO VAD IS ALREADY WIRED: VoiceLoopController takes vad: VadDetector,
 > LiveChatService/ScreenShareService build it via VadFactory.create(). No
 > push-to-talk, no fixed window, no timeout — continuous endpointing, MIT,
-> sub-1ms per 30ms chunk. The loop already knows WHEN you speak. It cannot turn
-> that into TEXT. That is the whole gap. This is also why ORT/ONNX is the voice
+> sub-1ms per 30ms chunk.
+> THE INTERACTION MODEL, exactly (operator): TAP the mic button, talk, and when
+> you STOP TALKING it engages. Silence is the send signal, decided by the VAD.
+> NOT a hotword. NOT always-listening. NOT hold-the-button-down. One tap opens
+> the mic; the VAD closes it. Do not build any of the other three.
+> The loop already knows WHEN you speak. It cannot turn that into TEXT.
+> That is the whole gap. This is also why ORT/ONNX is the voice
 > layer and never the LLM path.
 > NOT about hosted models.
 >  - Browser: DONE. In Monitor, shared component, new tabs + OAuth popups work.

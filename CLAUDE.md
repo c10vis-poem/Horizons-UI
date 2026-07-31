@@ -139,6 +139,14 @@
 > boot.log lines are tagged [main]/[clifford].
 >
 > ### 5. PHASE 1 SCOPE (operator): browser · voice · Termux backend
+> VOICE LAYER = ONE ONNX PLANE, three parts: Silero VAD (endpointing) +
+> Moonshine STT (missing) + Kokoro TTS (works, in-process on sherpa AAR).
+> SILERO VAD IS ALREADY WIRED: VoiceLoopController takes vad: VadDetector,
+> LiveChatService/ScreenShareService build it via VadFactory.create(). No
+> push-to-talk, no fixed window, no timeout — continuous endpointing, MIT,
+> sub-1ms per 30ms chunk. The loop already knows WHEN you speak. It cannot turn
+> that into TEXT. That is the whole gap. This is also why ORT/ONNX is the voice
+> layer and never the LLM path.
 > NOT about hosted models.
 >  - Browser: DONE. In Monitor, shared component, new tabs + OAuth popups work.
 >  - Monitor pop-out tabs CONSOLE/TERMINAL/BROWSER: DONE.

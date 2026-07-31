@@ -85,11 +85,22 @@
 >   Router   (Plate/Fuse)  — completed configs get plated. Refuses to turn on
 >                            unless every param is satisfied AT execution time.
 >   Archives               — real file manager, ArchiveStore on filesDir/archive.
-> RUNTIME DEFINITION PROTOCOL (the 10-Amp Fuse) — four properties, always:
->   1. binaryName   — the engine. `ort_engine` OR `geniex`. (dual runtime)
->   2. port+health  — `:8080/health` OR `:18181/v1/models`
->   3. argsTemplate — launch syntax, with {model} injection
->   4. requiredAssets — mandatory companions (e.g. QNN SDK libs)
+> RUNTIME DEFINITION PROTOCOL — the operator's OWN four, in plain English.
+> These were deliberately SIMPLIFIED down from five to four. Do not re-expand
+> them, do not re-split #4, do not drop #3. Quote them as written:
+>   1. THE ENGINE (what makes it go) — `ort_engine`, `geniex`, OR a custom script.
+>   2. THE FUEL & CARGO (the assets) — model, extra scripts, SDK libs.
+>      Sometimes ZERO items, sometimes a whole list.
+>   3. THE ROAD & WEIGHT LIMIT (hardware/memory) — can this survive on THIS
+>      device? Too heavy for RAM? Wrong architecture? This is the amperage
+>      limit, and it exists specifically to stop OOM crashes. greenLight()
+>      does NOT check it today.
+>   4. THE COMMUNICATION (syntax AND handshake — ONE parameter, on purpose)
+>      "there is no need to separate the syntax and the endpoint — they both
+>      just represent how we talk to the engine and how it talks back."
+>      argsTemplate is how we instruct it; a port/endpoint like :8080/health or
+>      :18181/v1/models is one way it replies. An in-process SDK call is
+>      another. #4 does NOT imply a daemon or a port.
 > Assets land PASSIVELY. Monitor acknowledges and waits for the user to PLUG IN.
 > SLOT COUNTS ARE NOT FIXED AT 3: cloud API = 3 (endpoint/key/model), terminal
 > script = 1, on-device CLI = 0. EVERY slot in EVERY room must offer a manual

@@ -91,15 +91,19 @@ only after the flip.
 
 ---
 
-## KEEP — matches canon, do NOT rebuild
+## Already matches canon — no rebuild needed
 
 - `RuntimeDef` data model + `greenLight()` static-only checks (no network/side
   effects) — `RuntimeDefStore.kt`. Canon-correct; only *add* amperage (3.1).
 - `RouterConfig` fluid slots + `READY/RUNNING/SLEEPING/ARCHIVED` states +
   Sleep/Archive actions — `RouterConfigStore.kt`, `RouterPane.kt`. Matches
   "fluid slots, no fixed count, Sleep/Archive."
-- The Router **just-in-time greenLight re-check at flip** — `RouterPane.switchOn()`
-  :81–89. Canon-correct; keep exactly.
+- ~~The Router just-in-time greenLight re-check at flip~~ — **SUPERSEDED
+  2026-07-31.** The *timing* is right (validation must be live; a series switch
+  has no memory) but the *ownership* is wrong: the check belongs to the
+  **Monitor**, and `RouterPane.switchOn()` re-implements it instead of
+  consulting it. The operator explicitly rejected Router-as-gatekeeper. See
+  CLAUDE.md §Authority model.
 - `ArchiveStore` file manager, `SettingsStore` vault split. (Verify against canon
   in a follow-up pass — not yet fully read.)
 - Failure UX hooks: `⚡ FUSE BOX` banner (`RouterPane.kt` :188), the Goat / 404-cat

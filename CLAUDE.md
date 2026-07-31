@@ -279,8 +279,10 @@ work.
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)
-- No in-process tensor runtime — every model runs via its own uploadable daemon binary
-- `M0DU14R-SYSx-inc/NeuroOmni.Vag-Agenti` is REFERENCE-ONLY
+- LLM inference runs via an uploadable daemon binary, not in-process. This is
+  scoped to the **LLM path only** — the voice layer (sherpa-onnx Kokoro TTS,
+  and Moonshine STT once wired) runs in-process by design and is not a
+  violation of it.
 - Don't trigger the dormant compile pipeline pre-emptively — see
   `wiki/COMPILE-PIPELINE.md` for its own hard rules (`SKIP_VISION`,
   `max_dynamic_tensor_size_mib`), which only matter if/when that pipeline
@@ -321,10 +323,12 @@ work.
 
 ---
 
-## What Was Ripped Out — Do NOT Reference
+## Superseded — historical context
 
-Scoped to the Qwen3.5-9B build path. Other model families ship their own
-runtime binaries; this table is not a constraint on future runtimes.
+What these were replaced *by*, on the Qwen3.5-9B path. This is a record of
+how the build got here, **not a ban list** — if one of these turns out to be
+the right tool again, that is an open question, not a rule violation.
+Other model families ship their own runtimes; this table never constrained them.
 
 | Old | Replaced by |
 |---|---|

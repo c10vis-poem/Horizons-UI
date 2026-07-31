@@ -49,6 +49,7 @@ import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.allGreen
 import com.horizons.core.state.greenLight
 import com.horizons.ui.OscilloscopeBackground
+import com.horizons.ui.browser.BrowserPane
 import com.horizons.ui.theme.HorizonsColors
 import java.io.File
 
@@ -56,6 +57,16 @@ private val Accent = HorizonsColors.TileMonitor
 private val ReadyGreen = Color(0xFF4CAF50)
 private val WarningAmber = Color(0xFFE8A838)
 private val ErrorRed = Color(0xFFFF5577)
+
+/**
+ * Full-screen views reachable from the Monitor's screen. Console is the
+ * default face; the others pop out over it and return with ←.
+ */
+private enum class MonitorPopout(val label: String) {
+    Console("CONSOLE"),
+    Terminal("TERMINAL"),
+    Browser("BROWSER"),
+}
 
 @Composable
 fun MonitorPane(
@@ -101,8 +112,47 @@ fun MonitorPane(
         files.sortedBy { it.name }
     }
 
+    // The Monitor's screen has pop-out full-screen views: the console (default),
+    // the main browser, and the terminal. Each is one "tab" on the screen — a
+    // plain swap, no nested tab framework.
+    var popout by remember { mutableStateOf(MonitorPopout.Console) }
+
     Box(modifier = modifier.fillMaxSize()) {
         OscilloscopeBackground()
+        if (popout != MonitorPopout.Console) {
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { popout = MonitorPopout.Console }) {
+                        Text("←", fontSize = 20.sp, color = Accent)
+                    }
+                    Text(
+                        popout.label,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Accent,
+                    )
+                }
+                when (popout) {
+                    MonitorPopout.Browser -> BrowserPane(
+                        app = app,
+                        accent = Accent,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
+                    // Full-screen terminal without leaving the Monitor. Terminal
+                    // remains its own tile at 6:00; this is an express lane.
+                    MonitorPopout.Terminal -> TerminalPanel(
+                        onBack = { popout = MonitorPopout.Console },
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
+                    MonitorPopout.Console -> Unit
+                }
+            }
+            return@Box
+        }
         SelectionContainer {
             Column(
                 modifier = Modifier
@@ -132,6 +182,26 @@ fun MonitorPane(
                         fontSize = 12.sp,
                         color = Accent.copy(alpha = 0.5f),
                     )
+                    Spacer(Modifier.weight(1f))
+                    // Pop-out tabs on the Monitor's screen.
+                    listOf(MonitorPopout.Terminal, MonitorPopout.Browser).forEach { target ->
+                        Surface(
+                            color = Accent.copy(alpha = 0.15f),
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .clickable { popout = target },
+                        ) {
+                            Text(
+                                target.label,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = Accent,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
                 }
 
                 HorizontalDivider(color = Accent.copy(alpha = 0.2f))

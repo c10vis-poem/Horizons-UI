@@ -83,11 +83,22 @@ class CliffordService : Service() {
         return START_STICKY
     }
 
+    /** Text of the notification we last posted, so we never re-post an identical one. */
+    @Volatile private var lastNotifiedText: String? = null
+
     private fun updateState(new: DaemonState) {
         if (state == new) return
         state = new
+        refreshNotificationIfChanged()
+    }
+
+    /** Rebuild + post the notification only when its content actually changed. */
+    private fun refreshNotificationIfChanged() {
+        val text = notificationText()
+        if (text == lastNotifiedText) return
+        lastNotifiedText = text
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIF_ID, buildNotification())
+        nm.notify(NOTIF_ID, buildNotification(text))
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -116,10 +127,11 @@ class CliffordService : Service() {
             // DEAD process is relaunched, and that path has backoff + a failure cap.
             while (isActive) {
                 delay(CRS_INTERVAL_MS)
-                runCatching {
-                    val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                    nm.notify(NOTIF_ID, buildNotification())
-                }
+                // Refresh the notification only when its text actually changed.
+                // This used to re-post unconditionally every tick, and building the
+                // notification reads the breadcrumb log — so an idle app did disk I/O
+                // every 15s forever for a notification that never changed.
+                runCatching { refreshNotificationIfChanged() }
 
                 // Canon gate (P0): nothing engaged in the Router and no live daemon
                 // → stay idle, never auto-launch. Clear any stale relaunch backoff so
@@ -184,11 +196,22 @@ class CliffordService : Service() {
         }
     }
 
-    /** True when the user has ENGAGED a runtime by flipping its fuse in the Router. */
-    private fun hasEngagedRuntime(app: HorizonsApplication?): Boolean =
-        app?.routerConfigs?.configs?.value?.any {
+    /**
+     * True when the user has ENGAGED a runtime by flipping its fuse in the Router.
+     *
+     * CROSS-PROCESS: we run in `:clifford`, so our [HorizonsApplication] and its
+     * RouterConfigStore are *different instances* from the UI process's. The store
+     * used to load once at construction and never re-read, which meant a Router
+     * flip in the UI process was invisible here forever — the fuse could never
+     * actually start anything. Re-read from disk before answering.
+     */
+    private fun hasEngagedRuntime(app: HorizonsApplication?): Boolean {
+        val store = app?.routerConfigs ?: return false
+        runCatching { store.reloadIfChanged() }
+        return store.configs.value.any {
             it.status == com.horizons.core.state.ConfigStatus.RUNNING
-        } == true
+        }
+    }
 
     private suspend fun ensureDaemonRunning() {
         val app = applicationContext as? HorizonsApplication ?: return
@@ -289,7 +312,15 @@ class CliffordService : Service() {
 
     // ── Notification ──────────────────────────────────────────────────────────
 
-    private fun buildNotification(): Notification {
+    /**
+     * Body text for the notification: current state + the most recent app-lifecycle
+     * breadcrumb, so the user can see WHERE the main process died without opening
+     * the app or pulling logs. [Breadcrumb.last] reads only a bounded tail window.
+     */
+    private fun notificationText(): String =
+        "${state.label}\nlast: ${com.horizons.core.diag.Breadcrumb.last()}"
+
+    private fun buildNotification(expanded: String = notificationText()): Notification {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
@@ -297,11 +328,6 @@ class CliffordService : Service() {
                     .also { it.description = "NPU daemon process guardian" }
             )
         }
-        // Surface the most recent app-lifecycle breadcrumb in the notification
-        // body so the user can see WHERE the main process died without opening
-        // the app or pulling logs.
-        val crumb = com.horizons.core.diag.Breadcrumb.last()
-        val expanded = "${state.label}\nlast: $crumb"
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle("Novus Agenti")

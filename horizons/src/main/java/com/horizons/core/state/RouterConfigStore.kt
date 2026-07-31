@@ -89,29 +89,64 @@ data class RouterConfig(
     }
 }
 
+/**
+ * Router config store, backed by `filesDir/router_configs.json`.
+ *
+ * CROSS-PROCESS NOTE: this store is instantiated in BOTH the main app process and
+ * the `:clifford` process (CliffordService reads it to decide whether a runtime has
+ * been engaged). Each process gets its own instance with its own in-memory
+ * StateFlow. The file is the only shared truth.
+ *
+ * This used to load once in `init` and never re-read, which meant the `:clifford`
+ * process held a snapshot taken at *its* startup and could never observe a Router
+ * flip performed in the main process — so flipping a fuse in the UI could never
+ * actually start a daemon. [reloadIfChanged] fixes that: a reader in another
+ * process calls it to pick up writes, cheaply (an mtime/length check, no parse
+ * unless the file actually changed).
+ */
 class RouterConfigStore(context: Context) {
     private val file = File(context.filesDir, "router_configs.json")
     private val _configs = MutableStateFlow<List<RouterConfig>>(emptyList())
     val configs: StateFlow<List<RouterConfig>> = _configs
 
+    /** Fingerprint of the file contents currently held in memory. */
+    @Volatile private var loadedStamp: Pair<Long, Long> = 0L to 0L
+
     init { load() }
 
+    private fun stamp(): Pair<Long, Long> =
+        if (file.exists()) file.lastModified() to file.length() else 0L to 0L
+
     private fun load() {
-        if (!file.exists()) return
+        if (!file.exists()) { _configs.value = emptyList(); loadedStamp = 0L to 0L; return }
         try {
+            val s = stamp()
             val arr = JSONArray(file.readText())
             val list = mutableListOf<RouterConfig>()
             for (i in 0 until arr.length()) {
                 list.add(RouterConfig.fromJson(arr.getJSONObject(i)))
             }
             _configs.value = list
+            loadedStamp = s
         } catch (_: Exception) { }
+    }
+
+    /**
+     * Re-read from disk if another process has written since our last load.
+     * Returns true when the in-memory view changed. Safe to call on a poll loop.
+     */
+    fun reloadIfChanged(): Boolean {
+        val s = stamp()
+        if (s == loadedStamp) return false
+        load()
+        return true
     }
 
     private fun save() {
         val arr = JSONArray()
         _configs.value.forEach { arr.put(it.toJson()) }
         file.writeText(arr.toString(2))
+        loadedStamp = stamp()
     }
 
     fun add(config: RouterConfig) {

@@ -3,56 +3,97 @@
 > **RESUME PROMPT — COPY THIS BLOCK VERBATIM TO START ANY NEW SESSION**
 >
 > ```
-> Project: Novus Agenti (Omni Claw) — fully on-device agentic AI assistant.
-> Canonical repo: c10vis-poem/Novus-Agenti.
+> Project: Novus Agenti (Omni Claw) — on-device agentic AI assistant.
+> App repo: c10vis-poem/Horizons-UI   Vault: c10vis-poem/OBSIDIAN-Master_Wiki
+> Protocol: c10vis-poem/aesop        Termux CLI: c10vis-poem/claude-code-android
 >
-> WHAT THIS IS: the Horizons Workbench — an on-device agentic assistant that
-> is a manual, modular "workbench," NOT a black box. Core law: "Daemons stay
-> dumb, the user is the loader" — the app boots EMPTY and stable; nothing runs
-> until the user flips a fuse in the Router. Seven tiles feed a center-hub
-> Router; a runtime is DEFINED in Terminal → LANDS in Settings → VALIDATED by
-> Monitor (greenLight) → ENGAGED by the Router flip → supervised by
-> CliffordService. Full explicit definition:
-> knowledge/omni-claw-defined/workbench/00-TILE-HUB-ARCHITECTURE.md.
+> ### FIRST: git branch -a. DO NOT ASSUME main IS THE BASE.
+> `main` does NOT contain the working home screen. The correct base is
+> RELEASE-correct-home-screen-984b0610 (= frozen 984b061 + 2 CI-only commits).
+> The two lineages differ in app code ONLY in HomeGrid.kt + its 2 fonts.
+> HomeGrid.kt is OPERATOR-FROZEN at 984b061 — do not touch it, for any reason,
+> including a CI-breaking fix, without explicit sign-off.
+> Active branch (both repos): claude/app-crash-landing-yc955p
+> Horizons-UI PR #32 (draft, base = RELEASE-correct-home-screen-984b0610).
+> APK: releases/tag/debug-claude-app-crash-landing-yc955p -> horizons.apk
 >
-> CURRENT FOCUS: get the app WORKING and wired to run as defined, AND get the
-> home dock looking right — both to 100%, every session, no "get it close."
-> The running work list is EXECUTIONS.md (the build dock). It is code-anchored
-> and prioritized: P0 stable boot (a boot regression auto-launches the daemon —
-> canon violation), P1 wire the fuse box to actually execute, P2 GenieX +
-> model round-trip, P3 the amperage/OOM check, V home-dock visuals. Read the
-> build dock after the canon, before touching code. Do NOT assume the old
-> RuntimeDefStore/RouterPane/CliffordService code already implements canon — it
-> contradicts it in the ways the dock lists.
+> ### WHAT THIS IS
+> A manual, modular workbench, NOT a black box. Core law: "Daemons stay dumb,
+> the user is the loader" — boots EMPTY and stable; nothing runs until the user
+> flips a fuse. Seven tiles feed a center-hub Router.
 >
-> The compile pipeline (ONNX → QAI Hub, PR #4) is DORMANT — only if the
-> primary Q4_0 GGUF via GenieX path hard-fails on hardware. See
-> wiki/COMPILE-PIPELINE.md. Don't run Job 8 pre-emptively.
+> AUTHORITY MODEL (operator, 2026-07-31) — the circuit is IN SERIES:
+>   Settings = supply (assets/keys). Can hand a config to the Router.
+>              NO authority to run it.
+>   Terminal = writes the fuse spec (parameters only). Never executes.
+>   Monitor  = THE SWITCH IN THE LOOP. Verifies wiring. Open/loose => no
+>              circuit, however perfect the fuse. Stores nothing, DISPATCHES.
+>   Router   = fuse box + breaker. Carries current. Doesn't argue.
+> Validation must be LIVE at flip time (a series switch has no memory), but the
+> check belongs to the MONITOR. RouterPane.switchOn() currently re-implements it
+> instead of consulting it — that is the one real defect. The operator EXPLICITLY
+> REJECTED the Router as hardened gatekeeper; the gate is the Monitor's.
 >
-> READ THESE IN FULL BEFORE ANY ACTION — the mandatory first-read canon (all
-> MARKDOWN, human+model readable; ingest them, don't just note they exist):
->   1. CLAUDE.md (full, incl. current State of the Union)
->   2. knowledge/omni-claw-defined/ — what the app IS + how it works, INCLUDING
->      workbench/00-TILE-HUB-ARCHITECTURE.md and the three workbench/*.md docs
->   3. knowledge/daemon-reference/GPT-DAEMON-REFERENCE.md + NPU-RUNTIME-PATHS.md
->   4. compile/manifest.yaml
->   5. EXECUTIONS.md — the build dock (the "go here, do this" work list)
+> ### THE CRASH (why this branch exists)
+> Symptom: crashes ~90s after landing, worse each launch, "still trying to
+> connect." FIXED + CI green (unverified on device):
+>  - FailureMonitor.install() built a full report SYNCHRONOUSLY ON THE MAIN
+>    THREAD in Application.onCreate(), walking every crash + log file.
+>  - Every "tail" read was really readText()/readLines() on the WHOLE file.
+>  - Breadcrumb crash.log had NO cap and NO rotation.
+>    => closed loop: crash -> bigger log -> heavier boot -> more crashes.
+>  - CliffordService runs in :clifford, so its RouterConfigStore was a DIFFERENT
+>    INSTANCE that loaded once in init and never re-read => a Router flip in the
+>    UI was permanently invisible to the launcher. Fixed via reloadIfChanged().
+> STILL UNPROVEN: the trigger of the FIRST ~90s crash. Prime suspect is Android
+> LMK (leaves NO stack trace) — Kokoro pulls ~200MB at boot then loads a 326MB
+> ONNX in-process. Get the answer on device, no laptop needed:
+>   cd /sdcard/Android/data/com.horizons/files/diag && tail -40 crash.log
+> Stack trace present => JVM exception. Empty but app died => killed from
+> outside (LMK/FGS), and no trace will ever appear. boot.log lines are now
+> tagged [main]/[clifford] so "did :clifford come up?" is answerable.
 >
-> JSONL is for GREP/RETRIEVAL ONLY — never a first-read. The .jsonl files exist
-> so a session can grep one chunk on demand; the .md versions above ARE the
-> first read. For deep reference (QAIRT SDK, prior research, device inventory)
-> grep the relevant knowledge/*.jsonl on demand — don't preload the corpus.
+> ### PHASE 1 SCOPE (operator): the app must run its WebView browser, its voice
+> layer, and a backend for the Termux agent. NOT about hosted models.
+>  - Browser: DONE — moved to Monitor, shared component, links open new tabs.
+>  - Monitor pop-out tabs CONSOLE/TERMINAL/BROWSER: DONE.
+>  - Voice: BROKEN IN THE MIDDLE. TTS works in-process (sherpa AAR). STT points
+>    at 127.0.0.1:8091 and NOTHING BINDS IT, so the loop falls back to
+>    llmRuntime.streamAudio and looks like a model problem. It isn't.
+>    FIX = run Moonshine STT in-process on the AAR already shipping.
+>  - Termux backend: DOES NOT EXIST. The app has ZERO inbound listeners.
+>    NOTE: the app-spawned daemon already binds 127.0.0.1:8080 under the app's
+>    UID and Termux shares loopback — so NPU access needs no inversion. What
+>    Termux can't get on its own is mic/voice/WebView-OAuth. That's the listener.
 >
-> VISUAL work only: wiki/HOME-REDESIGN-SPEC.md + wiki/home-redesign-img/ is the
-> home-dock visual canon. It is NOT first-read canon — open it ONLY when doing
-> V-track visual work. Every visual change ends with a real on-device
-> screenshot vs. the reference (operator is the on-device check; cloud has no
-> Android SDK).
+> ### KNOWN GAPS
+>  - temperature is hardcoded (NpuClient:101, CloudLlmRuntime:122). Verbosity
+>    HAS a Settings slider that NOTHING READS. Cores don't exist. These must
+>    become real RuntimeDef params BEFORE P1.3 (runtime-agnostic launcher), or
+>    the launcher gets reopened twice.
+>  - greenLight() checks only 2 of the canon's 4 boxes (engine, assets). No
+>    arch/RAM amperage check, no handshake check. And switchOn() SKIPS THE GATE
+>    ENTIRELY when no RuntimeDef matches — so cloud/PWA/terminal configs bypass
+>    the Monitor today.
+>  - HomeGrid.kt:69 computes npuReady from startsWith("Adreno 830"), which the
+>    NO-BACKEND fallback string also matches. FROZEN — report, don't fix.
+>  - Two launcher icons: .MainActivity AND .uilocal.LocalHomeActivity both carry
+>    MAIN/LAUNCHER. They run different code; test the tile icon. Operator asked
+>    about removing the second LAUNCHER entry — not yet done.
 >
-> Use /memory to reload. CLAUDE.md's State of the Union is the current-state
-> doc; EXECUTIONS.md is the running build dock. After reading: state SOTU +
-> next dock item, then wait. HF_TOKEN / QAI_HUB_API_TOKEN come from the
-> environment config (§Tokens) — already exported. Never hardcode them.
+> ### KNOWLEDGE — Drive is the source of truth
+> Use mcp__Google_Drive__* directly; the operator's material is all there.
+> Vault repo now carries the FULL migration: 1305 files, 363 md, 96 jsonl,
+> RAG_LIBRARY + BM25 index. To pull more Drive content use the
+> drive-to-obsidian-migration skill — do NOT hand-sync.
+> Two data-bank docs are AI transcripts, not specs (the "Gemini duel" doc
+> retracts its own central claim; 2026-07-17 is one the operator calls a snow
+> job). Architecture in them is canon; implementation claims are not.
+> UI direction captured: ROUTER = stereo stack, MONITOR = arcade cabinet,
+> TERMINAL = fakesteak matrix cascade. NOT to be built yet.
+>
+> Use /memory to reload. HF_TOKEN / QAI_HUB_API_TOKEN come from the environment.
+> Never hardcode them.
 > ```
 
 ---
@@ -64,584 +105,100 @@ Type `/memory` in any Claude Code session to reload full project context.
 **Sequence (all first-read = MARKDOWN; JSONL is grep-only, never first-read):**
 1. Read `CLAUDE.md` (this file, all sections, incl. the current
    `## State of the Union` — there is no separate handoff file)
-2. Read `knowledge/omni-claw-defined/` — what the app IS + how it works,
-   INCLUDING `workbench/00-TILE-HUB-ARCHITECTURE.md` and the three
-   `workbench/*.md` docs (the fuse-box / seven-tile definition)
-3. Read `knowledge/daemon-reference/GPT-DAEMON-REFERENCE.md` + `NPU-RUNTIME-PATHS.md`
-4. Read `compile/manifest.yaml`
-5. Read `EXECUTIONS.md` — the running build dock (prioritized work list)
-6. For anything else (compile pipeline, QAIRT SDK detail, prior research,
-   device inventory), retrieve on demand by grepping `knowledge/*.jsonl` per
-   `skills/project-memory/SKILL.md` — don't preload it, and don't first-read it
-7. Produce a SOTU summary + next dock item, confirm before touching any file
+2. Read `knowledge/omni-claw-defined/` — what the app IS + how it works
+3. Read `EXECUTIONS.md` — the build dock
+4. For anything else, use the `project-memory` skill (knowledge/ -> vault -> Drive)
+5. Produce a SOTU summary + next action, confirm before touching any file
 
 ---
 
-## Order of Operations — Non-Negotiable
-
-1. **Read** — the files above, in order, completely
-2. **State** — current SOTU and next action
-3. **Act** — check the priority tree below FIRST, before touching the
-   general Pending list
-4. **Hygiene check** — before AND after every push (not a full repo audit
-   every session — see `§Hygiene Protocol` below for the actual scope)
-5. **Document** — before ending: update `## State of the Union` in this
-   file **in place** (no separate handoff file — see `§Cache Prompting`'s
-   file-edit-batching rule for when in the session this should happen),
-   then commit AND push. A local-only commit is invisible to the next
-   session.
-
-### Hygiene Protocol — lightweight, tied to every push, not a one-off audit
-
-This is NOT a mandate to re-run a full repo-wide audit every session — that
-was a one-time session-16 initiative. Going forward, hygiene is a small,
-continuous check tied to the normal commit/push cycle:
-
-- **Before every push:** check that whatever you just changed doesn't leave
-  a dangling reference elsewhere (a moved/deleted file's old path, a
-  renamed branch, a doc that now contradicts your own edit). Scope: the
-  files you touched and their direct cross-references — not the whole repo.
-- **After every CI push:** once CI results land, a quick sanity check that
-  nothing you assumed would work actually broke — not a fresh audit, just
-  closing the loop on what you just shipped.
-- **If you discover something stale, redundant, or contradictory at ANY
-  point — even outside these two checkpoints — STOP.** Do not silently fix
-  it, and do not silently ignore it and move on. Flag it to the operator
-  and get their read before taking any further action. This applies even
-  mid-task, even if it's not what you were asked to look at.
-
-### Act — priority tree (check top to bottom, stop at the first match)
-
-Reading this file is not the same as acting on every item in it.
-"Act" means: find which of these applies, do that, THEN fall through
-to the general Pending list.
-
-1. **HF egress just became available?** That is NOT automatically a
-   signal to run Job 8 anymore — the compile pipeline is dormant (see the
-   resume prompt above). Only trigger Job 8 if the operator has confirmed
-   the primary GGUF/GenieX path hard-failed. Otherwise treat HF egress
-   news as just useful information, not an action trigger.
-2. **User gave an explicit task in their first message?** Do that.
-   It overrides the Pending list below.
-3. **Neither of the above?** Work `§State of the Union`'s Pending list,
-   top to bottom.
-
-If this file and a handoff disagree, **this file wins**.
-
----
-
-## Cache Prompting + Sub-Agent Rules
-
-### Prompt-cache warm-up — happens ONCE, at session start, and is mandatory there
-- The initial prompt is where the cacheable prefix (system context + tools)
-  gets established — this warm-up is not optional, it's the entire point of
-  a session start. Don't skip it or treat "warming up" as busywork to avoid.
-- Once established, that prefix is reused for the rest of the session under
-  the **1-hour prompt-cache TTL** — no need to re-touch it or re-warm it
-  mid-session just because time passed. Only schedule a wakeup/check-in for
-  something you're actually waiting on (CI, a background job, an external
-  event); match the delay to that thing, not to the cache window.
-- If a session goes quiet long enough to fall out of the 1h window (or the
-  account enters usage overage, which drops the TTL to 5 minutes), that's a
-  cost to notice, not a problem to prevent — don't restructure work around
-  avoiding it.
-
-### Tool loading — attach at the start, don't fragment the cache mid-session
-- **Tools the task is known to need get attached with the initial prompt**,
-  at session start — that's part of the same warm-up as above. Loading a
-  tool's schema mid-session (each `ToolSearch` resolution) changes the tool
-  list, which perturbs/fragments the cached prefix from that point forward.
-- **If something unanticipated comes up mid-session that needs a tool not
-  loaded at the start, don't fetch it immediately.** Flag it, and request it
-  at the start of the **next** session/prompt cycle instead — don't break
-  the current cached prefix mid-stream for a one-off need.
-- MCP and other deferred tools still arrive as names only (in
-  `<system-reminder>` deferred-tool lists) until resolved via
-  `ToolSearch(query="select:<tool_name>")` — the point above is about
-  *when* to resolve them (up front, not scattered through the session), not
-  whether the deferred mechanism itself exists.
-
-### File edits — batch at the end, same reasoning as tool-loading
-- File edits perturb the working session the same way tool-loading does.
-  Gather everything that needs to change, get it confirmed, THEN execute
-  the edits together at the end of the review — don't interleave edits
-  throughout an open-ended review/discussion.
-
-### Hard rules — Anthropic API `cache_control` mechanics (moved here from
-### the former standalone `rules/CACHE_PROMPT_RULES.md`, session 16)
-
-These apply when code in this project calls the Anthropic API directly
-with explicit `cache_control` headers (e.g. a future orchestrator) — not
-to this Claude Code session's own tool-call mechanics, which the sections
-above already cover.
-
-1. Max 4 `cache_control` markers per request: tools → system block →
-   history-summary → reserved mid-conversation.
-2. `cache_control` lands on the last block of the prefix to cache —
-   everything before it is the key.
-3. Pre-warm before sub-agent fan-out: one `max_tokens: 1` call so the
-   cache is written before parallel reads begin — without it, agents
-   fired at the same millisecond all miss and all pay a full write.
-   Caches are workspace-scoped, not per-agent.
-4. Never edit the cached prefix mid-session — batch edits between
-   sessions (mid-session edits invalidate at 1.25x/5m TTL or 2x/1h TTL).
-5. TTL selection: 5m for single sessions ≤5 min between turns; 1h for
-   sub-agent fan-out or multi-turn over an hour. Below ~3 reads, 1h
-   doesn't pay back.
-6. Verify hits — check `lastUsage.cacheReadTokens > 0` after each call.
-7. Cache key minimum is 1024 tokens; below that, no cache activity even
-   with `cache_control` set.
-8. 20-block lookback — a miss walks back at most 20 blocks; a growing
-   conversation that outruns this needs a second breakpoint before the
-   first falls out of the window.
-9. Mixing TTLs in one prompt: longer-TTL blocks sit before shorter-TTL
-   blocks (1h segments at the top, 5m segments below).
-10. The cache is not portable — in-memory only, gone once a session goes
-    quiet past its TTL. Carry over the source text between
-    sessions/days, not the cache itself; re-send it to re-warm.
-11. **1h TTL is not guaranteed** even on a Claude subscription — verify
-    per-call which TTL actually applied (`usage.cache_creation
-    .ephemeral_1h_input_tokens` vs `.ephemeral_5m_input_tokens` in the
-    API response) rather than trusting it blindly. On API-key/Bedrock/
-    GCP/Foundry auth (5m by default), `ENABLE_PROMPT_CACHING_1H=1` opts
-    into 1h, `FORCE_PROMPT_CACHING_5M=1` forces 5m.
-12. **Three separate "sub-agent cache" systems in this repo — don't
-    conflate them:** (a) rules #3/#5 above apply only when this
-    project's own code calls the Anthropic API directly with its own
-    `cache_control` headers; (b) a Claude Code session's own `Agent`-tool
-    sub-agents always start a cold 5-minute-TTL cache regardless of the
-    parent session's TTL — no setting changes this, only a *fork*
-    (inherits the parent's exact system prompt/tools/history) reads the
-    parent's warm cache; (c) `sub-agent.agent.yaml`/`agents/build-runner.yaml`'s
-    `metadata.cache_ttl_default: 1h` is a third, unrelated system — the
-    separate `ant beta:agents create` deployment path's own knob.
-
-### When to spawn
-- Open-ended exploration spanning more than 3 files → `Explore` agent
-- Independent background research that doesn't block current work → background agent
-- Any task finishable inline in under 3 tool calls → do NOT spawn
-
-### How to brief every sub-agent
-Every sub-agent prompt must include:
-- Repo: `c10vis-poem/Novus-Agenti`, and the correct branch for the track
-  (`claude/project-scope-review-lf615p` for compile work, PR #4;
-  `claude/notice-agent-ui-local-xa14op` for app/UI-fork work — see the
-  resume prompt above for the current PR number; sae7cy/PR #15 is merged)
-- Instruction to read CLAUDE.md before acting
-- The exact task (not open-ended)
-- What NOT to do (no commits to main, no pushing other branches)
-- **The same warm-up rules as the parent session**: attach the tools this
-  task is known to need at the start (with this brief), don't fragment the
-  cache by resolving new ones mid-task unless truly unanticipated — and if
-  something unanticipated comes up, flag it for the next at-bat rather than
-  fetching it ad hoc. Batch any file edits at the end once the task's scope
-  is fully clear, not interleaved throughout.
-
-**Template:**
-```
-Repo: c10vis-poem/Novus-Agenti, branch <the branch matching your track — see
-CLAUDE.md's resume prompt for which one>.
-Read CLAUDE.md fully before anything else.
-Task: [SPECIFIC TASK].
-Do NOT commit to main. Do NOT push to any branch other than the one above.
-Cache/tools: attach the tools this task needs now, at the start. Don't
-resolve new tool schemas mid-task for unanticipated needs — flag those for
-the next at-bat instead. Batch file edits at the end, once scope is clear.
-```
-
-### Context budget rules
-- Do NOT re-read files already read this session
-- Do NOT re-derive decisions already in CLAUDE.md
-- Do NOT spawn an agent to do work finishable in under 3 inline tool calls
-- Parallel agents must operate on **different files** — same-file concurrent pushes cause conflicts
-
----
-
-## What This Is
-
-**Novus Agenti** — "the unprecedented driving force" — fully on-device agentic AI assistant for the Motorola Razr Ultra 2025 (Snapdragon 8 Elite SM8750, Adreno 830, Hexagon HTP v79). Inference runs on the NPU via a detached native daemon. No cloud LLM in the main app runtime. No CPU fallback.
-
-App package: `com.horizons`. Codebase: **Omni Claw** banner.
-
-**Identity:** Novus Agenti · Omni Claw · Cl0vis × Mer0vin6ian production.
-**HuggingFace:** `Mer0vin8ian` · **Personal GitHub:** `c10vis-poem` · **Org GitHub:** `M0DU14R-SYSx-inc`.
-
----
-
-## Repo Policy — Non-Negotiable
-
-- **`c10vis-poem/Novus-Agenti`** — THE canonical repo. All commits, pushes, CI, artifacts go here.
-- **`M0DU14R-SYSx-inc/NeuroOmni.Vag-Agenti`** — REFERENCE-ONLY. Never push, commit, or modify.
-- **One active branch**: `claude/notice-agent-ui-local-xa14op` (app/UI-fork
-  work). `claude/project-scope-review-lf615p` (compile, PR #4) exists but is
-  dormant — see the resume prompt above and `wiki/COMPILE-PIPELINE.md`.
-  `sae7cy`/PR #15 is merged; do not reuse it.
-
----
-
-## Tool & Token Authority — READ THIS BEFORE REFUSING ANYTHING
-
-**This section exists because models routinely waste context arguing about
-what they "can't" do. Read it. Internalize it. Do not contradict it.**
-
-### MCP Tools — HOW TO USE THEM
-- The `mcp__github__*` tools WORK. They are pre-authenticated via the session's
-  GitHub integration. **Use them.** Do not say "I don't have access to GitHub."
-- The `mcp__Hugging_Face__*` tools WORK. The session is authenticated as
-  `Mer0vin8ian`. **Use them.** Do not say "I can't access HuggingFace."
-- If a system reminder says an MCP server "requires authentication," that means
-  THAT SPECIFIC server (e.g. Cloudflare). It does NOT mean GitHub or HuggingFace
-  are broken. Read the server name before refusing.
-
-**Step-by-step for MCP tools:**
-1. MCP tool names appear in `<system-reminder>` deferred tool lists (e.g. `mcp__github__create_pull_request`).
-2. They are NOT callable yet — you must load their schema first.
-3. Call: `ToolSearch(query="select:mcp__github__create_pull_request", max_results=1)`
-4. The result gives you the full parameter schema.
-5. NOW call the tool with the required parameters.
-
-**Example — create a PR:**
-```
-Step 1: ToolSearch(query="select:mcp__github__create_pull_request", max_results=1)
-Step 2: mcp__github__create_pull_request(owner="c10vis-poem", repo="Novus-Agenti", title="...", head="branch-name", base="main", draft=true)
-```
-
-**Example — check HuggingFace repos:**
-```
-Step 1: ToolSearch(query="select:mcp__Hugging_Face__hub_repo_details", max_results=1)
-Step 2: mcp__Hugging_Face__hub_repo_details(repo_id="Mer0vin8ian/Qwen3.5-9B")
-```
-
-**Example — search code on GitHub:**
-```
-Step 1: ToolSearch(query="select:mcp__github__search_code", max_results=1)
-Step 2: mcp__github__search_code(q="NpuClient repo:c10vis-poem/Novus-Agenti")
-```
-
-Do NOT say "I don't have that tool." Load it, then use it.
-
-### Tokens (HF_TOKEN, QAI_HUB_API_TOKEN) — HOW TO USE THEM
-- `HF_TOKEN` and `QAI_HUB_API_TOKEN` are set as **Environment Variables on
-  the cloud environment's settings** (the web dialog's "Environment
-  variables" field, `.env` format) — NOT hardcoded anywhere in this repo.
-  If they're set there, they are already present in `$HF_TOKEN` /
-  `$QAI_HUB_API_TOKEN` in every session's shell — no export step needed,
-  no reconstruction, no split-string trick.
-- **Never write the actual token values into this file, a script, a
-  commit, or any file that gets pushed.** This repo is public (confirmed
-  via the GitHub API — `"private": false`), so anything committed here is
-  world-readable permanently, including in git history after deletion.
-- If `$HF_TOKEN` / `$QAI_HUB_API_TOKEN` are unset in a session, that means
-  they haven't been added to the environment config yet (or you're on an
-  environment that doesn't have them) — tell the user, don't fabricate a
-  value and don't ask them to paste the raw token into chat or a file.
-
-**Step-by-step for any `hf`, `huggingface-cli`, or `qai-hub` CLI call:**
-```bash
-huggingface-cli whoami   # $HF_TOKEN is already in the environment
-```
-No export needed if the environment is configured correctly. If a command
-fails with an auth error, check `echo -n "$HF_TOKEN" | wc -c` returns
-nonzero before assuming anything else is wrong.
-
-### HuggingFace Access — NETWORK POLICY IS PER-SESSION, NOT FIXED
-
-**`huggingface.co` is blocked by the agent proxy in some sessions and not
-others.** This is NOT a constant fact about "this environment" — each
-remote session runs in its own ephemeral container with its own network
-egress policy, chosen when the environment was created. A session that
-successfully ran `hf jobs uv run` did so because ITS container allowed
-`huggingface.co` egress. That does not mean the next session's container
-does too.
-
-**Do not trust a prior session's "verified working" claim about network
-access.** A commit on 2026-06-30 (`1afa04f`) asserted huggingface.co was
-reachable and overwrote a correct block-detection note from three minutes
-earlier (`d91a714`) — with no actual passing command output as proof. That
-overwrite was wrong for at least one later session. Verify fresh, every
-session:
-```bash
-curl -sS "$HTTPS_PROXY/__agentproxy/status"
-```
-Check `recentRelayFailures` for `huggingface.co` 403s. If direct HTTP/CLI
-calls to huggingface.co fail with `403` / `Host not in allowlist`, that
-session's container does not have HF egress. Do not retry — use the routes
-below instead, and if none work, tell the user which host is blocked and
-that they need to run the command from Termux or an environment with
-`huggingface.co` on its egress allowlist.
-
-**Routes that work regardless of the egress policy:**
-1. **MCP tools** (`mcp__Hugging_Face__*`) — pre-authenticated as `Mer0vin8ian`,
-   routed through the MCP server's own channel, not the session's HTTP
-   egress. Use ToolSearch to load, then call. These work even when
-   `huggingface.co` is blocked for direct HTTP.
-2. **Python SDK / CLI / curl** — only work if `huggingface.co` is on this
-   session's egress allowlist. Test with `hf auth whoami` or Python
-   `whoami()` before relying on them for anything bigger (e.g. `hf jobs`).
-
-**There is no MCP tool for triggering HF Jobs.** `hf jobs uv run` requires
-direct HTTPS to huggingface.co. If it's blocked in this session, the job
-must be triggered from a session/environment where it isn't — e.g. Termux
-on-device, or a remote environment created with HF egress allowed.
-
-The token has these scopes: `repo.write`, `inference.serverless.write`,
-`inference.endpoints.write`, `job.write`, `collection.write`, and more —
-scope is not the blocker when this fails, egress policy is.
-
-### Proxy / Network — HOW IT WORKS
-- Outbound HTTPS works through the agent proxy. The CA bundle is pre-configured.
-- `github.com`, `pypi.org`, `npm` are consistently reachable. `huggingface.co`
-  reachability VARIES BY SESSION — see above. Do not hardcode either belief.
-- `curl`, `git push`, `git fetch`, `pip install`, `npm install` — all work
-  for allowed hosts.
-
-**If a network call fails:**
-1. Read the actual error message.
-2. If TLS/cert error → add `--cacert /root/.ccr/ca-bundle.crt` or set
-   `REQUESTS_CA_BUNDLE=/root/.ccr/ca-bundle.crt` for Python tools.
-3. If 403/407 → check `curl -sS "$HTTPS_PROXY/__agentproxy/status"` for
-   `recentRelayFailures`. That's a real per-session policy block. Report
-   the specific host. Don't retry the same call — try the MCP route instead
-   if one exists for that service.
-4. If timeout → check the same status endpoint for diagnostics.
-5. Everything else → try again or try a different approach.
-
-### What "can't be done" actually looks like
-- A tool call returns an error → diagnose and retry or report the error.
-- A host is 403-blocked → report the specific host.
-- That's it. Everything else: TRY IT FIRST, THEN REPORT WHAT HAPPENED.
-
-**If you find yourself typing "I don't have access to," "I can't use," or
-"that requires authentication" — STOP. Re-read this section. Then try the
-tool call. If it fails, report the actual error. Do not pre-refuse.**
-
----
-
-## Tokens / Secrets — LIVE IN THE ENVIRONMENT CONFIG, NOT HERE
-
-`HF_TOKEN` and `QAI_HUB_API_TOKEN` are set as Environment Variables on the
-cloud environment used for this repo's sessions (web UI → environment
-settings → "Environment variables" field). They arrive pre-exported in
-every session's shell — no reconstruction step, no split-string workaround.
-
-**This file used to hardcode both tokens split across two shell variables
-to dodge the git secret scanner.** That was removed on 2026-07-02: this
-repo is confirmed **public** (`"private": false` via the GitHub API), so a
-split string committed here was never actually hidden from anyone — it was
-trivially reconstructable by concatenation, same as a scanner would flag a
-contiguous one. Both tokens were rotated after this was caught; if you're
-reading an older clone or cached version of this file with token halves in
-it, those values are dead and rotation already happened.
-
-If a session ever needs a token that isn't in its environment: tell the
-user to add it via the environment's settings dialog. Never write a real
-token value into this file, a commit, a script, or a chat reply that ends
-up in a shareable transcript.
-
----
-
-## Compile Pipeline — Qwen3.5-9B (dormant fallback)
-
-Moved to `wiki/COMPILE-PIPELINE.md` — the Single-Path Architecture table,
-Size Envelope, Hexagon HTP Constraints, and Job 8 Trigger Command all live
-there now, rewritten to make clear this whole pipeline is the **fallback**,
-not the primary plan (primary = Q4_0 GGUF via GenieX's GGML backend, no
-compile step). Don't trigger Job 8 without confirming a hard failure on
-that primary path first.
-
-The Horizons app itself is multi-runtime by design regardless of which
-pipeline produced a given model: each model family ships with its own
-uploadable runtime binary (`ort_engine` for ORT+QNN today, `geniex serve`
-once GenieX is forked and wired, future binaries for ExecuTorch/SNPE/TFLite/
-Jetson Tensor targets). Adding a new runtime is "drop the binary in via
-ModelImportActivity, register it in `RUNTIME_FILES`."
-
-`daemon/src/` (`ort_engine`) is real, CI-built code, not scaffolding — but
-it's the **legacy** runtime now that GenieX is the decided plan (session
-15). Its wire contract (`POST http://127.0.0.1:8080/api/v1/generate`,
-including the `image_b64` field added session 16 for vision) is what
-`NpuClient.kt` speaks today; that contract shape is expected to carry
-forward conceptually when GenieX replaces what's listening behind the
-socket, not to require a branch merge — there's no separate GenieX branch
-yet to merge with (it hasn't been forked into `c10vis-poem` at all yet).
-
----
-
-## Android App / Battery Rules
-
-**All three of the below are ALREADY WIRED — this section used to claim
-otherwise (stale since at least session 12-13); verified directly against
-the code during session 16's cleanup.** Both NpuManager + Game SDK boosts
-are required together: Game SDK boosts UI/scheduler only; NpuManager lock
-is what gives the NPU daemon full performance.
-
-### NpuManager Performance Lock — WIRED
-`CliffordService.acquireNpuPerfLock()`/`releaseNpuPerfLock()` (reflection-based,
-since `NpuManager` is an `@hide` system service on Qualcomm BSPs) — called
-from the CRS loop once the daemon reports healthy.
-
-### Game SDK Performance Mode — WIRED (better API than this section used to show)
-`core/perf/GameModeBoost.kt` — uses the modern per-thread ADPF API
-(`GameManager.setGameState(GameState(...))` + `PerfHintSession`), not the
-older `setGameMode(GameMode.PERFORMANCE)` call this section used to
-document. Wrapped around every LLM stream (`HorizonsApplication.sendChat()`)
-and the voice loop (`.gameBoosted()`).
-
-### Manifest — WIRED
-`android.permission.HIGH_PERFORMANCE` and `android.hardware.game`
-(`uses-feature`) are both present in `AndroidManifest.xml`.
-`CliffordService`'s `foregroundServiceType="specialUse"` is also present.
-
----
-
-## State of the Union — 2026-07-20 (session 19)
-
-This is the current-state doc, rewritten in place each session. The
-**running work list is `EXECUTIONS.md` — the build dock** (code-anchored,
-prioritized: "go here, do this"); this SOTU points at it, it is the work
-authority, not the old "Pending" list below. Historical detail lives in git
-history, not here.
-
-**Visual work is NOT tracked here.** The home-dock redesign lives only in
-`wiki/HOME-REDESIGN-SPEC.md` + `wiki/home-redesign-img/`, read only when doing
-V-track work. (Earlier SOTUs let a visual saga dominate this file; stripped.)
-
-### Session 19 — canon made explicit + build dock created
-
-The operator supplied the missing canon (3 workbench docs + the home-dock
-visual spec) that pins down **how the app works under the hood**, not just
-what it is. This session:
-
-- **Folded the canon into first-read** — the 3 workbench docs are now
-  `knowledge/omni-claw-defined/workbench/*.md`, plus a new
-  `workbench/00-TILE-HUB-ARCHITECTURE.md` that **explicitly defines each
-  tile's function and how it wires to the center-hub Router** (this was
-  never written down; the old code only *assumed* it). Read the workbench
-  folder as canon.
-- **Created the build dock** — `EXECUTIONS.md` is now the code-anchored,
-  prioritized work list (repurposed from the earlier scaffolding file).
-- **Found the boot regression + a core contradiction:** the app carries
-  **two conflicting runtime models** — the canon fuse-box (built as UI +
-  validation only, never executes) and a legacy `CliffordService`
-  auto-launcher that **auto-starts the daemon at boot** (via
-  `resolveNpuModelPath()` auto-detecting a model in `/Download`), which is
-  the "won't boot" regression and a direct canon violation. Details +
-  fixes in the build dock (P0/P1).
-- **Stripped the visual saga** out of this file; it lives only in
-  `wiki/HOME-REDESIGN-SPEC.md` now. JSONL is grep-only; MD is first-read.
-
-**Standing rule (operator):** every session gets the app running AND looking
-right, both to 100% — no "get it close." Every visual change ends with a real
-on-device screenshot vs. the reference.
-
-**Still real from session 18** (secondary): built-in failure monitoring —
-`core/diag/FailureMonitor.kt` + `FAILURES.md` + `failure-monitor.yml` +
-`tools/failures.sh`. Master-session scaffold — `agents/omni-claws-master.agent.yaml`
-+ `wiki/MASTER-SESSION.md`.
-
-**Branch note:** `claude/app-redesign-layered-t55d47` is where the visual
-spec + reference images came from (now copied into this branch). Reconcile
-or retire it with the operator before assuming a single active branch.
-
-### Current state (session 16 carryover — daemon/runtime track, separate from the UI reconstruction above)
-
-- **App/UI-fork track is the one active branch** (`claude/notice-agent-ui-local-xa14op`).
-  Horizons app is code-complete UI (Compose, 6 panels, home grid, chat,
-  terminal, browser tab); daemon/watchdog architecture (`CliffordService`,
-  `DaemonLauncher`) is real and working; a new additive local-first UI fork
-  (`com.horizons.uilocal.LocalHomeActivity`) boots without gating on the
-  model daemon and shows independent status for the model+vision daemon vs.
-  the media (STT/TTS) daemon.
-- **Compile pipeline is dormant** — fallback only, see
-  `wiki/COMPILE-PIPELINE.md`. Don't trigger Job 8 without a confirmed hard
-  failure on the primary GGUF/GenieX path.
-- **NpuManager lock, Game SDK boost, and the manifest permission/feature
-  entries are all already wired** — see `§Android App / Battery Rules`.
-  This file used to claim otherwise for several sessions; corrected.
-- **Vision lives in the same daemon/process as the LLM**; STT+TTS are a
-  separate media daemon. `NpuClient.kt` carries an `image_b64` field
-  end-to-end to `ort_engine`; `DaemonTtsClient` is the TTS half of the
-  media-daemon client, mirroring `DaemonSttClient`. Neither GenieX nor a
-  real media-daemon binary exist as processes yet — this is contract +
-  scaffold work, not full runtime implementation.
-- **Known gap**: `daemon/src/http_server.cpp` reads a single `recv()` into
-  an 8KB buffer — image payloads (100KB+) will be truncated until it reads
-  until Content-Length. Documented inline in that file.
-- **Doc/knowledge/folder restructure (this session)**: `knowledge/daemon-reference/`
-  + `knowledge/claude-code-reference/` (moved from `wiki/`), `knowledge/qairt-sdk/htp.jsonl`
-  (new — completes that topic's triplet), `wiki/COMPILE-PIPELINE.md` and
-  `wiki/JOB_EXECUTION_LOG.md` (new, replacing several older files),
-  `skills/project-memory/SKILL.md` redesigned around the knowledge/ corpus
-  instead of being a redundant CLAUDE.md/SOTU re-read. `rules/CACHE_PROMPT_RULES.md`
-  merged into this file's Cache Prompting section (no longer a separate
-  file). `models/` + `scripts/` merged into `compile/` (same dormant-pipeline
-  domain). Top-level folder count: 13 → 12 (`compile/` absorbed two).
-  `RESOURCE-DOCS-WIKI.md` (402KB duplicate of the knowledge/ corpus) deleted.
-  `knowledge/device-inventory/DEVICE-INVENTORY.md` recovered from the
-  deleted `wiki/APP-SOTU-AUDIT.md` — that file bundled a real device
-  inventory (SDKs, model files, Termux toolchain, 2026-07-13 snapshot)
-  together with a now-stale status narrative; only the factual inventory
-  was worth keeping, so it's preserved here rather than lost entirely.
-
-### Standing decisions — LAW, not to re-litigate
-
-- **Runtime: GenieX on the QAIRT/HTP SDK backend**, wired to a separate
-  detached daemon (`geniex serve`, OpenAI-compatible wire on `:18181/v1`).
-  `ort_engine` is the legacy runtime — real, CI-built, still in the repo,
-  not the Qwen3.5-9B path going forward. `GenieX` (`github.com/qualcomm/GenieX`)
-  is NOT yet forked into `c10vis-poem` — that's the next real runtime step.
-  Full detail: `wiki/GENIEX-DAEMON-PLAN.md`.
-- **Never invent priority.** The operator's labels and ordering ARE the
-  priority. Don't reorder, re-scope, or substitute your own judgement. If
-  unsure what's next, ask.
-- **OmniNeural / Nexa SDK = dead.** Reference-only for reverse-engineering.
-- **Orchestrator/sub-agent model**: brief per the sub-agent template, hold
-  sub-agents to their brief; a background agent that hasn't returned in
-  hours is dead — do the work inline instead of waiting.
-
-### Pending — in order
-
-1. **GenieX fork + wire** — fork `qualcomm/GenieX` → `c10vis-poem/GenieX`,
-   then work `wiki/GENIEX-DAEMON-PLAN.md`'s next-steps list. Per
-   `knowledge/device-inventory/DEVICE-INVENTORY.md`, the device already has
-   the prebuilt `geniex-bench-android-arm64 v0.3.14` (both GGML and QAIRT
-   backends) + the Q4_0 GGUF + HTP v79 libs sitting in
-   `/storage/emulated/0/Download/` as of 2026-07-13 — don't re-download,
-   re-verify what's there first. Once wired, update `compile/manifest.yaml`'s
-   `daemon_binaries.genie_x.status` (currently "not yet forked/wired").
-2. **Real media-daemon binary** — Moonshine STT + Kokoro/Sherpa TTS as a
-   detached process on `127.0.0.1:8091`; currently only client-side
-   contracts exist (`DaemonSttClient`, `DaemonTtsClient`), nothing binds
-   that port yet. Also update `compile/manifest.yaml` once this exists —
-   it's not currently listed there at all.
-3. **Fix `http_server.cpp`'s recv() truncation** before vision can actually
-   round-trip end to end.
-4. **Define precise boot/loading-phase sequencing for the UI build** — the
-   actual init order (daemon launch → health poll → UI activation →
-   voice/assist service registration → perf-lock acquisition) is implicit/
-   scattered across `CliffordService`/`DaemonLauncher`/`MainActivity`/
-   `LocalHomeActivity` rather than specified as one sequence.
-5. **Cloud connectors** — OpenRouter works; OmniRoute, GitHub, HuggingFace,
-   QAI Hub, GCS still need wiring (`CloudLlmRuntime`, agent tools).
-6. **Tailscale** — route to home node, not yet installed/wired.
-7. **Chat history export** — `ChatHistoryStore` saves locally, no export/sync.
-8. **RouterPane "routing rules"** — deliberately not built; needs a real
-   rule engine, not UI toggles with no behavioral effect.
-9. **SettingsPane "Themes"** — deliberately not built; `HorizonsColors` is
-   currently a flat hardcoded object, needs a switchable palette system.
-10. **Three orphaned-but-real classes**: `core/log/InteractionLogger.kt`,
-    `core/shell/SecureResourceRelay.kt`, `core/screen/ScreenshotCapture.kt`
-    — fully implemented, never wired to any caller. Confirm with operator
-    before deleting; likely mid-flight features, not cruft.
-11. **CI publish-target TODO** in `build-apk.yml` — unconfirmed as still
-    real; verify against a live release page before touching.
+## State of the Union — 2026-07-31 (session 20)
+
+**Repo moved.** Work is in `c10vis-poem/Horizons-UI` now, not `Novus-Agenti`.
+Vault is `c10vis-poem/OBSIDIAN-Master_Wiki`. Protocol spec is `c10vis-poem/aesop`.
+
+### The base-branch trap — read before anything
+
+`main` does **NOT** contain the working home screen. The correct base is
+**`RELEASE-correct-home-screen-984b0610`** (frozen `984b061` + 2 CI-only
+commits). The lineages differ in app code **only** in `HomeGrid.kt` + 2 fonts.
+This session started on `main` by mistake and had to re-base. **Run
+`git branch -a` before choosing a base** — there is more real work on unmerged
+branches in these repos than on `main`.
+
+### Session 20 — crash root-caused, browser moved, vault recovered
+
+- **The diagnostics were amplifying the crash.** `FailureMonitor.install()` ran
+  a full disk-walking report **synchronously on the main thread** in
+  `onCreate()`; every "tail" read was a whole-file `readText()`/`readLines()`;
+  `crash.log` had **no cap and no rotation**. Closed loop: crash → bigger log →
+  heavier boot → more crashes. All three bounded; new `core/diag/FileTail.kt`
+  does seek-based reads. The operator called this before I did.
+- **The fuse could never reach the daemon.** `CliffordService` runs in
+  `:clifford`, so its `RouterConfigStore` was a *different instance* that loaded
+  once in `init` and never re-read — a Router flip in the UI was permanently
+  invisible to the launcher. Fixed with `reloadIfChanged()`.
+- Breadcrumbs now tagged `[main]`/`[clifford]` — "did `:clifford` come up?" is
+  finally answerable from the log.
+- **Browser moved to Monitor** as a shared `ui/browser/BrowserPane.kt`;
+  `setSupportMultipleWindows` was `false` so links could never open tabs — fixed,
+  which also unbreaks OAuth popups. Monitor gained CONSOLE/TERMINAL/BROWSER
+  pop-out tabs.
+- **PR #32 open (draft), CI green, APK published.** Not verified on device.
+- **Vault recovered.** The full Drive→Obsidian migration (1300 files, RAG library
+  46 docs/1786 chunks, BM25 index) existed unmerged on
+  `claude/drive-obsidian-migration-th115b` while `main` sat empty and four
+  `docs/mirror-*` branches carried 82 files. Merged. Vault is now 1305 files.
+
+**Still unproven:** the trigger of the first ~90 s crash. Prime suspect is
+Android **LMK** — leaves no stack trace. Needs the on-device `crash.log`.
+
+### Phase 1 (operator scope): browser · voice · Termux backend
+
+Explicitly **not** about hosted models.
+
+| Piece | State |
+|---|---|
+| WebView browser | **DONE** — in Monitor, tabs work |
+| Monitor pop-outs | **DONE** |
+| Voice layer | **BROKEN MID-CHAIN** — TTS in-process ✓, STT points at dead `:8091`. Fix: Moonshine in-process on the AAR already shipping. |
+| Termux backend | **ABSENT** — app has zero inbound listeners. Needed for mic/voice/OAuth, *not* NPU (the app-spawned daemon already binds `:8080` and Termux shares loopback). |
+
+### Authority model — LAW (operator, 2026-07-31)
+
+Series circuit, two independent authorities. **Settings** supplies and may hand
+a config to the Router but has **no authority to run it**. **Monitor is the
+switch in the loop** — stores nothing, but dispatches, and holds the verdict.
+**Router** is fuse box + breaker: carries current, doesn't argue. Validation is
+**live at flip time** (a series switch has no memory) but the check is the
+**Monitor's** — `RouterPane.switchOn()` re-implementing it is the one real
+defect. The operator **explicitly rejected** the Router-as-gatekeeper.
+
+### Next, in order
+
+1. **Moonshine STT in-process** — smallest change, closes the voice loop.
+2. **Termux backend listener** — exposes voice/mic/OAuth over loopback.
+3. **Runtime params first-class** (temperature/verbosity/cores) **before** P1.3,
+   or the launcher gets reopened twice.
+4. **P1.3** — drive `DaemonLauncher` from the flipped `RuntimeDef`.
+5. **Close the `switchOn()` bypass** — configs with no `RuntimeDef` skip the
+   gate entirely today, so cloud/PWA/terminal never reach the Monitor.
+
+### Flagged, not actioned
+
+- `HomeGrid.kt:69` reports NPU-ready for the *no-backend* fallback string.
+  **FROZEN — report only.**
+- Two launcher icons (`.MainActivity` + `.uilocal.LocalHomeActivity`) run
+  different code; confusing during triage. Removing the second `LAUNCHER` entry
+  is a pending operator call.
+- `verbosity` has a Settings slider **nothing reads**; `debugLogLevel` likewise.
 
 ---
 
 ## Repo File Map
 
 ```
-c10vis-poem/Novus-Agenti  (public — confirmed via GitHub API, not private)
+c10vis-poem/Horizons-UI  (public)  — vault: c10vis-poem/OBSIDIAN-Master_Wiki
 
 CLAUDE.md                     ← THIS FILE (architecture-of-record + current SOTU)
 agents/
@@ -710,15 +267,15 @@ work.
 
 ## Hard Rules
 
-- **`HomeGrid.kt` IS FROZEN as of commit `984b061` on `claude/homegrid-v5-tuned`
-  (2026-07-27, "ROUTER plate down 24dp") — operator-confirmed as the final,
-  correct layout/design.** No agent or session touches
-  `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` past that commit for
-  ANY reason — not a layout tweak, not a "small" fix, not even a
-  build-critical/CI-breaking fix — without the operator's explicit
-  go-ahead first. If this file is implicated in a CI failure or any other
-  issue: stop, report it to the operator, and wait for sign-off. Do not
-  push a fix to it unilaterally, even a pure syntax/compile fix.
+- **`HomeGrid.kt` IS FROZEN at commit `984b061`** (2026-07-27, "ROUTER plate
+  down 24dp") — operator-confirmed as the final, correct layout. No agent or
+  session touches `horizons/src/main/java/com/horizons/ui/HomeGrid.kt` for ANY
+  reason — not a layout tweak, not a "small" fix, not even a build-critical or
+  CI-breaking fix — without the operator's explicit go-ahead. If it is
+  implicated in a failure: stop, report, wait for sign-off.
+  Icebox copies (blob `618cf4b6`): `FROZEN-correct-home-screen-984b0610`,
+  `claude/homegrid-v5-tuned`, `RELEASE-correct-home-screen-984b0610`.
+  Earlier snapshot: `claude/homegrid-v5-SNAPSHOT-good-1837dc2` (`725306d`).
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)

@@ -62,8 +62,6 @@
 >    (compile/compile_qwen3_5_9b.py). That is what the "dormant" pipeline is for.
 >  - QAT != QAIRT. QAT is how weights were quantized (gemma-4-E4B-it-qat-q4_0-
 >    gguf). QAIRT is the runtime. A QAT GGUF still lands on HTP.
->  - The compile pipeline is a DORMANT FALLBACK for ONE model (Qwen3.5-9B).
->    It is not a prerequisite for anything.
 >  - ORT/ONNX IS THE VOICE LAYER ONLY. It was never the LLM path. Do not
 >    describe the LLM stack in terms of ORT.
 >  - GenieX ships as a Maven Central Android SDK with prebuilt arm64-v8a native

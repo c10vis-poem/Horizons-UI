@@ -69,3 +69,45 @@ To bring more Drive content into the vault, use the
   models, runtimes, and tools alike. There is a fork for nearly everything.
 - Don't re-derive decisions already in `CLAUDE.md`; don't re-read files already
   read this session.
+
+---
+
+## Retrieval traps in this corpus (learned 2026-07-31, the hard way)
+
+**1. Extensionless files are invisible.** Google Drive exports arrive with no
+extension. Every converter and every `*.pdf` glob misses them. 37 PDFs sat in
+the vault unconverted and unchunked, including the 193k-character QAIRT HTP
+manual. Fixed, but check by magic bytes, never by suffix:
+```bash
+find . -type f ! -name "*.*" -exec file -b {} \; | sort | uniq -c
+```
+
+**2. A capture can keep the chrome and drop the content.** The vault's GenieX
+`.md` is the GitHub repo *file tree* — the README body, with the runtime table
+that answers "what will GenieX load", is not in it. The 7-page PDF in Drive has
+it. If a converted doc looks thin for its subject, go find the original.
+
+**3. Markdown extraction discards every image.** Diagrams in the Qualcomm PDFs
+are unreachable by text search — both embedded rasters and vector drawings.
+`fitz` `page.get_images()` only finds rasters; vector diagrams need
+`page.get_drawings()` and a page render. Do not conclude a diagram is absent
+because grep found nothing.
+
+**4. Read the FOLDER, not the file.** Siblings go deeper on different parts.
+Numbered folders are conversation series — pulling `3.` out of a 1-9 series
+gets you a ninth of the picture. Same-named files ACROSS folders are
+byte-identical (verified), so depth is always in the siblings BESIDE a file.
+
+**5. Artifact kinds are not duplicates.** `foo.md` (prose), `foo.jsonl`
+(chunks), `foo-urls.md` (sources) are three different things.
+
+**6. Source ranking, non-negotiable.** Vendor docs > repo READMEs > this
+corpus's summaries. `aesop-wiki.md` asserted "NOT on the ladder: Hexagon DSP",
+which is false and misled multiple sessions; the compiled `libggml-htp-v79.so`
+sitting three folders away disproved it. Any summary here can carry that rot,
+including this skill.
+
+**7. `build_rag_index.py` self-poisons.** `load_chunks` walks all of
+`RAG_LIBRARY` including its own `_index/meta.jsonl`, which has a different
+schema. First build succeeds; every rebuild KeyErrors on `text`. Exclude
+`_index` when rebuilding.

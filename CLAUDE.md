@@ -70,6 +70,38 @@
 >    UID and Termux shares loopback — so NPU access needs no inversion. What
 >    Termux can't get on its own is mic/voice/WebView-OAuth. That's the listener.
 >
+> ### RUNTIME TRUTH — read before saying ANYTHING about backends
+> EVERYTHING TARGETS THE NPU VIA HTP. There is no CPU-vs-NPU split by format.
+>  - AI Hub has precompiled damn near everything -> QAIRT -> HTP.
+>  - Not precompiled? Unsloth-quantized GGUF -> llama.cpp/ggml -> THE SAME HTP.
+>    ggml has a Hexagon backend. PROOF, not opinion — compiled .so files in the
+>    vault at #AESOP.../##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/ :
+>    libggml-hexagon.so, libggml-htp-v73/v75/v79/v81.so (device is v79).
+>    DEVICE-INVENTORY says it too: GenieX dual backends = llama.cpp (ggml,
+>    HTP v68-v81 + CPU + OpenCL) AND QAIRT. Both lines end at HTP. Reading
+>    "ggml" as "CPU path" is the single most repeated error in this project.
+>  - NOTHING NEEDS COMPILING. The compile pipeline is a dormant fallback for
+>    ONE model (Qwen3.5-9B), not a prerequisite for the stack.
+>  - QAT != QAIRT. QAT is how weights were trained/quantized (gemma-4-E4B-it-
+>    qat-q4_0-gguf). QAIRT is the runtime. A QAT GGUF still lands on HTP.
+>  - Voice is its own plane: ORT/ONNX in-process. Not the LLM path, not QAIRT.
+>
+> ### DOC AUTHORITY — the operator has 7 QAIRT manual sections, USE THEM
+> Order: Qualcomm QAIRT manual FIRST, then code, then everything else.
+>  - Horizons-UI knowledge/qairt-sdk/ : htp.md (265KB), backend, context,
+>    graph, api (+ htp.jsonl). Overview + Tensor are MISSING here; they are in
+>    the vault at #AESOP.../(AESOP.]build/#QAIRT_main/#QAIRT/ in .mht/.pdf/.md.
+>  - DO NOT STOP AT THE FIRST QAIRT FILE. There are seven sections and many
+>    copies. "I read the QAIRT doc" is almost always wrong.
+>  - aesop-wiki.md's "NOT on the ladder: Hexagon DSP" is FLATLY WRONG — the
+>    .so files above disprove it. Never cite that file for runtime facts.
+>  - FraQAT is old prior-art research. Never reach for it over the QAIRT SDK.
+>  - Read the FOLDER, not the file. Siblings are not copies; they go deeper on
+>    different parts. Same-named files ACROSS folders are byte-identical (that
+>    is intentional cross-filing) — the depth is in the siblings BESIDE it.
+>  - The operator already owns/forked everything needed. Do not report their
+>    own inventory back to them as a discovery; go read it and use it.
+>
 > ### KNOWN GAPS
 >  - temperature is hardcoded (NpuClient:101, CloudLlmRuntime:122). Verbosity
 >    HAS a Settings slider that NOTHING READS. Cores don't exist. These must
@@ -283,6 +315,12 @@ work.
 - Never push `main` without explicit user permission
 - Never `--no-verify`, `push --force`, `reset --hard` without confirming
 - No CPU fallback in the Qwen3.5-9B path (NPU or nothing for that model)
+- **The QAIRT manual outranks every summary in these repos.** For any claim
+  about backends, runtimes, HTP, graphs, context binaries or NPU execution:
+  read `knowledge/qairt-sdk/` (and the vault's `#QAIRT_main/`) BEFORE citing
+  any wiki page, SOTU, handoff, or research doc — including this file. A
+  53-line summary has already been repeated over the 265KB manual sitting one
+  directory away; do not do it again. See RUNTIME TRUTH in the resume prompt.
 - LLM inference runs via an uploadable daemon binary, not in-process. This is
   scoped to the **LLM path only** — the voice layer (sherpa-onnx Kokoro TTS,
   and Moonshine STT once wired) runs in-process by design and is not a

@@ -26,17 +26,28 @@ object Breadcrumb {
     private const val BOOT_FILE  = "boot.log"
     private const val CRASH_FILE = "crash.log"
     private const val MAX_BOOT_SIZE_BYTES = 256L * 1024L  // 256 KiB cap
+    // crash.log used to have NO cap at all: every crash appended a full stack trace
+    // forever. Combined with the boot-path readers that slurped it whole, that made
+    // each crash increase the cost of the next boot. Cap it like boot.log.
+    private const val MAX_CRASH_SIZE_BYTES = 128L * 1024L // 128 KiB cap
 
     @Volatile private var dir: File? = null
     @Volatile private var lastCrumb: String = "init"
+    @Volatile private var installed = false
 
     fun install(ctx: Context) {
+        // Installed per-process (main + :clifford). Guard so a second call in the
+        // same process doesn't chain another handler onto the same file.
+        if (installed) return
+        installed = true
+
         val d = ctx.getExternalFilesDir(null)?.let { File(it, "diag") }
             ?: File(ctx.filesDir, "diag")
         d.mkdirs()
         dir = d
 
         rotateIfTooBig(File(d, BOOT_FILE))
+        FileTail.rotateIfTooBig(File(d, CRASH_FILE), MAX_CRASH_SIZE_BYTES)
 
         drop("session_start " +
             "pid=${Process.myPid()} " +
@@ -46,9 +57,11 @@ object Breadcrumb {
         val upstream = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             runCatching {
-                File(d, CRASH_FILE).appendText(
+                val f = File(d, CRASH_FILE)
+                FileTail.rotateIfTooBig(f, MAX_CRASH_SIZE_BYTES)
+                f.appendText(
                     "${ts()} thread=${thread.name} last_crumb=$lastCrumb\n" +
-                    throwable.stackTraceToString() +
+                    throwable.stackTraceToString().take(16_000) +
                     "\n----\n"
                 )
             }
@@ -56,41 +69,64 @@ object Breadcrumb {
         }
     }
 
-    /** Append a single breadcrumb. Cheap — no allocation beyond the line itself. */
+    /**
+     * Append a single breadcrumb. Cheap — no allocation beyond the line itself.
+     *
+     * Every line carries the writing process's short tag (`main` / `clifford`).
+     * BOTH the main app process and the `:clifford` FGS process append to this one
+     * file, and without a process tag a reader cannot tell whether `:clifford` ever
+     * came up at all — which is exactly the question triage keeps getting stuck on.
+     */
     fun drop(tag: String) {
         lastCrumb = tag
         val d = dir ?: return
         runCatching {
             FileWriter(File(d, BOOT_FILE), true).use { w ->
-                w.write("${ts()} $tag\n")
+                w.write("${ts()} [${procTag()}] $tag\n")
             }
         }
     }
 
-    /** Read entire boot.log + crash.log for in-app display. */
+    /** Tail of boot.log + crash.log for in-app display. Bounded — these files
+     *  are append-only, so reading them whole scaled with all past history. */
     fun readAll(): String {
         val d = dir ?: return "(diag dir not initialized)"
-        val boot = File(d, BOOT_FILE).takeIf { it.canRead() }?.readText() ?: "(no boot.log)"
-        val crash = File(d, CRASH_FILE).takeIf { it.canRead() }?.readText() ?: ""
+        val boot = FileTail.text(File(d, BOOT_FILE), 64 * 1024).ifEmpty { "(no boot.log)" }
+        val crash = FileTail.text(File(d, CRASH_FILE), 64 * 1024)
         return buildString {
-            append("== boot.log ==\n").append(boot)
-            if (crash.isNotEmpty()) append("\n== crash.log ==\n").append(crash)
+            append("== boot.log (tail) ==\n").append(boot)
+            if (crash.isNotEmpty()) append("\n== crash.log (tail) ==\n").append(crash)
         }
     }
 
-    /** Most recent breadcrumb across ALL processes — reads boot.log tail.
+    /** Most recent breadcrumb across ALL processes — reads a bounded boot.log tail.
      *  Use as FGS notification text so the user can see what the main process
      *  was doing right before it died, without opening the app. */
     fun last(): String {
         val d = dir ?: return lastCrumb
         val f = File(d, BOOT_FILE)
         if (!f.canRead()) return lastCrumb
-        return runCatching {
-            f.useLines { lines -> lines.lastOrNull() }
-                ?.substringAfter(' ', missingDelimiterValue = lastCrumb)
-                ?: lastCrumb
-        }.getOrDefault(lastCrumb)
+        return FileTail.lastLine(f)
+            ?.substringAfter(' ', missingDelimiterValue = lastCrumb)
+            ?: lastCrumb
     }
+
+    /** Short tag for the current process: "main", "clifford", or the raw suffix. */
+    private fun procTag(): String {
+        cachedProcTag?.let { return it }
+        val name = runCatching {
+            File("/proc/self/cmdline").readText().trim('\u0000', ' ', '\n', '\r')
+        }.getOrDefault("")
+        val tag = when {
+            name.isEmpty() -> "pid${Process.myPid()}"
+            name.contains(':') -> name.substringAfterLast(':')
+            else -> "main"
+        }
+        cachedProcTag = tag
+        return tag
+    }
+
+    @Volatile private var cachedProcTag: String? = null
 
     fun clear() {
         val d = dir ?: return

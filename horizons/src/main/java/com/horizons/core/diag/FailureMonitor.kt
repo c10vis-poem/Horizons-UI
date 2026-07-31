@@ -52,6 +52,12 @@ object FailureMonitor {
     private const val RECORDED_LOG = "failures.jsonl"
     private const val CAP = 30
 
+    /** Rotate the append-only recorded log past this size so it can never grow unbounded. */
+    private const val MAX_RECORDED_BYTES = 256L * 1024L
+
+    /** Newest N log files to look at. Older ones cannot contain the most recent errors. */
+    private const val MAX_LOG_FILES = 3
+
     @Volatile private var appContext: Context? = null
 
     private fun tsFormatter() = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
@@ -65,10 +71,20 @@ object FailureMonitor {
         return File(base, DIR_NAME).apply { mkdirs() }
     }
 
-    /** Call once from Application.onCreate() after CrashRecorder.install(). */
+    /**
+     * Call once from Application.onCreate() after CrashRecorder.install().
+     *
+     * MUST STAY CHEAP. This runs on the main thread during app startup, so it does
+     * NOT build a report here — it only registers the context and caps the
+     * append-only log. Building the report walks every crash file and every log
+     * file; doing that on the boot path meant each recorded crash made the next
+     * boot slower, which is a feedback loop that manufactures the instability it
+     * is supposed to be recording. The report is now built on demand only
+     * ([snapshot], called from the diagnostics UI).
+     */
     fun install(ctx: Context) {
         appContext = ctx.applicationContext
-        runCatching { writeReport(ctx) }
+        runCatching { FileTail.rotateIfTooBig(File(dir(ctx), RECORDED_LOG), MAX_RECORDED_BYTES) }
     }
 
     /**
@@ -82,9 +98,13 @@ object FailureMonitor {
                 put("ts", nowIso())
                 put("tag", tag)
                 put("message", message ?: throwable?.message ?: "")
-                put("stack", throwable?.stackTraceToString() ?: "")
+                // Bounded: a pathological retry loop must not be able to write an
+                // unbounded stack blob on every iteration.
+                put("stack", throwable?.stackTraceToString()?.take(4_000) ?: "")
             }
-            File(dir(ctx), RECORDED_LOG).appendText(line.toString() + "\n")
+            val f = File(dir(ctx), RECORDED_LOG)
+            FileTail.rotateIfTooBig(f, MAX_RECORDED_BYTES)
+            f.appendText(line.toString() + "\n")
         }
     }
 
@@ -179,11 +199,13 @@ object FailureMonitor {
         val out = JSONArray()
         val logs = File(ctx.filesDir, "logs").listFiles { f ->
             f.isFile && f.name.endsWith(".jsonl")
-        }?.sortedByDescending { it.lastModified() } ?: return out
+        }?.sortedByDescending { it.lastModified() }?.take(MAX_LOG_FILES) ?: return out
 
         val collected = mutableListOf<JSONObject>()
         outer@ for (f in logs) {
-            val lines = runCatching { f.readLines() }.getOrDefault(emptyList())
+            // Tail window only: we want the most recent errors, and these files are
+            // append-only and unbounded. Reading them whole was O(all history).
+            val lines = FileTail.lines(f, n = CAP * 20, maxBytes = FileTail.DEFAULT_WINDOW)
             for (raw in lines.asReversed()) {
                 val obj = runCatching { JSONObject(raw) }.getOrNull() ?: continue
                 if (obj.optString("kind") != "error") continue
@@ -204,7 +226,7 @@ object FailureMonitor {
         val out = JSONArray()
         val f = File(dir(ctx), RECORDED_LOG)
         if (!f.canRead()) return out
-        val lines = runCatching { f.readLines() }.getOrDefault(emptyList())
+        val lines = FileTail.lines(f, n = CAP, maxBytes = FileTail.DEFAULT_WINDOW)
         lines.asReversed().take(CAP).forEach { raw ->
             runCatching { JSONObject(raw) }.getOrNull()?.let { out.put(it) }
         }
@@ -262,13 +284,8 @@ object FailureMonitor {
         appendLine()
     }
 
-    private fun File.headLines(n: Int): String = runCatching {
-        useLines { it.take(n).joinToString("\n") }
-    }.getOrDefault("")
+    // Bounded reads only — see FileTail for why slurping these files was the bug.
+    private fun File.headLines(n: Int): String = FileTail.headLines(this, n)
 
-    private fun File.tailText(maxBytes: Int): String = runCatching {
-        val len = length()
-        if (len <= maxBytes) readText()
-        else readText().takeLast(maxBytes)
-    }.getOrDefault("")
+    private fun File.tailText(maxBytes: Int): String = FileTail.text(this, maxBytes)
 }

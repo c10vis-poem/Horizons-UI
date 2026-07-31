@@ -27,21 +27,39 @@
 >    Confirm what they're answering before building on it.
 >
 > ### 1. RUNTIME TRUTH — read before saying ANYTHING about backends
-> EVERYTHING TARGETS THE NPU VIA HEXAGON HTP. There is no CPU-vs-NPU split by
-> file format, and NOTHING NEEDS COMPILING. Two independent paths reach HTP:
->   PATH A: AI Hub asset -> GenieX runtime -> HTP.
->           Restricted: you CANNOT drop an arbitrary GGUF into GenieX.
->           `qai-hub-models fetch <Model> --runtime geniex_llamacpp --precision q4_0`
->           AI Hub publishes ready-to-deploy assets; Gemma-4-E4B-it is one.
->   PATH B: ANY GGUF -> llama.cpp/ggml -> HTP, BYPASSING GenieX entirely.
->           This is the general-purpose path. ggml has a Hexagon backend and
->           the compiled libs are in the vault at
->           #AESOP.../##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/ :
->           libggml-hexagon.so + libggml-htp-v73/v75/v79/v81.so (device = v79).
+> SOURCE OF TRUTH: the GenieX README, in Drive at #QAIRT_main/#GenieX/ as a
+> 7-page PDF (pages 3 and 6). The vault .md of that page is the repo FILE TREE
+> ONLY — the README body with this table is not in it. Read the PDF.
+>
+> GenieX is ONE runtime with TWO backends. The fork is INSIDE GenieX; it is not
+> GenieX-versus-something-else:
+>   |              | llama.cpp (`llama_cpp`)   | AI Engine Direct (`qairt`) |
+>   | models from  | Hugging Face, ~any GGUF   | Qualcomm AI Hub, precompiled|
+>   | format       | GGUF                      | per-chipset bundle         |
+>   | compute      | NPU · GPU · CPU           | NPU ONLY                   |
+>   | best for     | bring your own GGUF       | highest NPU performance    |
+>   geniex infer google/gemma-4-E4B-it-qat-q4_0-gguf   -> llama_cpp
+>   geniex infer ai-hub-models/Qwen2.5-VL-7B-Instruct  -> qairt
+> Q4_0 is the recommended precision: "best Hexagon NPU support."
+> The README says "almost any GGUF" — not literally any. Don't overclaim it.
+>
+> THE MAGIC SAUCE IS THE GGML/HTP KERNELS. The format is inert and the runtime
+> wrapper is plumbing; what puts a GGUF on the NPU is having ggml ops that
+> execute on Hexagon. That is why the libs are compiled PER DSP ARCH, in the
+> vault at #AESOP.../##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/ :
+> libggml-hexagon.so + libggml-htp-v73/v75/v79/v81.so (this device = v79).
+> GenieX does the same thing: third-party/ vendors llama.cpp b10019 and notes/
+> tracks `overlay-htp` — the overlay IS the kernel layer over stock llama.cpp.
+> Qualcomm's own AI Engine Direct stack diagram has a "Kernels" row per column
+> (col 3 = HTP Core -> HMX/HVX -> HTP).
 > Corollaries that keep getting broken:
 >  - "ggml" DOES NOT MEAN "CPU". Reading it that way is THE most repeated error
 >    in this project. DEVICE-INVENTORY.md says it plainly: GenieX ships dual
 >    backends, llama.cpp (ggml, HTP v68-v81 + CPU + OpenCL) AND QAIRT.
+>  - NOT everything is compile-free. The GGUF/llama_cpp side needs no compile.
+>    But AI Hub ships only SMALLER Qwen variants, NOT the 9B — so Qwen3.5-9B on
+>    the qairt backend requires BYOM-compiling via the QAI Hub workbench
+>    (compile/compile_qwen3_5_9b.py). That is what the "dormant" pipeline is for.
 >  - QAT != QAIRT. QAT is how weights were quantized (gemma-4-E4B-it-qat-q4_0-
 >    gguf). QAIRT is the runtime. A QAT GGUF still lands on HTP.
 >  - The compile pipeline is a DORMANT FALLBACK for ONE model (Qwen3.5-9B).

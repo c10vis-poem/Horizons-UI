@@ -49,6 +49,7 @@ import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.allGreen
 import com.horizons.core.state.greenLight
 import com.horizons.ui.OscilloscopeBackground
+import com.horizons.ui.browser.BrowserPane
 import com.horizons.ui.theme.HorizonsColors
 import java.io.File
 
@@ -101,8 +102,37 @@ fun MonitorPane(
         files.sortedBy { it.name }
     }
 
+    // The main browser lives in the Monitor/console tile. Simple binary swap
+    // between the console and the browser — no nested tab framework.
+    var showBrowser by remember { mutableStateOf(false) }
+
     Box(modifier = modifier.fillMaxSize()) {
         OscilloscopeBackground()
+        if (showBrowser) {
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { showBrowser = false }) {
+                        Text("←", fontSize = 20.sp, color = Accent)
+                    }
+                    Text(
+                        "BROWSER",
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Accent,
+                    )
+                }
+                BrowserPane(
+                    app = app,
+                    accent = Accent,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            }
+            return@Box
+        }
         SelectionContainer {
             Column(
                 modifier = Modifier
@@ -132,6 +162,21 @@ fun MonitorPane(
                         fontSize = 12.sp,
                         color = Accent.copy(alpha = 0.5f),
                     )
+                    Spacer(Modifier.weight(1f))
+                    Surface(
+                        color = Accent.copy(alpha = 0.15f),
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.clickable { showBrowser = true },
+                    ) {
+                        Text(
+                            "BROWSER",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = Accent,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
                 }
 
                 HorizontalDivider(color = Accent.copy(alpha = 0.2f))

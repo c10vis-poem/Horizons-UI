@@ -192,11 +192,11 @@
 >    NOTHING — not AESOP, not the daemon; it was never anyone's port.
 >    FIX = Moonshine STT in-process on the sherpa AAR already shipping, as its
 >    own client. TTS already proves the in-process pattern works.
->  - Termux backend: THE TERMUX SIDE ALREADY EXISTS. AESOP's aesopd is a
->    WebSocket bridge on :8765 routing llm.generate to GGML (:8081) or NPU
->    (:8080) by a `backend` field, with a wire spec at protocol/bridge-protocol.md.
->    What's missing is the HORIZONS end of that bridge. Much smaller than
->    "build a backend."
+>  - Termux backend: DOES NOT EXIST ON EITHER SIDE. An earlier version of this
+>    file said AESOP's aesopd was already running a WebSocket bridge on :8765
+>    with a wire spec — that came from aesop-wiki.md and is FALSE (see §7; the
+>    repo is six files). The app also has zero inbound listeners. Do not plan
+>    against a bridge that exists in neither place.
 >
 > ### 6. KNOWN GAPS
 >  - THE APP IS THE WORKBENCH — everything gets DEFINED AND COMPILED INSIDE THE
@@ -223,20 +223,13 @@
 >    Q4_0 (~5.4GB) as the EXECUTIVE. Operator has 10-12GB free routinely; any
 >    cap under ~9-9.5GB total is not feasible. RuntimeDef has NO concept of a
 >    companion model yet — one KEY_ACTIVE_MODEL pin only.
->  - greenLight's RUNTIME_HEADROOM_BYTES (3.5GB) is a PLACEHOLDER I picked, not
->    a measurement. Operator's call: the app should COMPUTE this — sum what is
->    actually plugged in, compare to real availMem — not carry a constant.
->  - Advisory vs blocking AssetCheck is not rendered differently in
->    MonitorPane/RouterPane. A red advisory currently looks like a hard failure.
 >  - temperature hardcoded (NpuClient:101, CloudLlmRuntime:122). verbosity has a
 >    Settings slider NOTHING READS; debugLogLevel likewise. Cores don't exist.
 >    Must become real RuntimeDef params BEFORE the runtime-agnostic launcher.
->  - resolveNpuModelPath() AUTO-SCANS models/, filesDir, /Download for the newest
->    LLM file. EXECUTIONS.md 0.1 grades this CONTRADICTS "boots empty". It should
->    not exist — a config carries its own target.
->  - greenLight() checks 2 of 4 boxes. switchOn() SKIPS THE GATE ENTIRELY when no
->    RuntimeDef matches, so cloud/PWA/terminal configs bypass it — same wrong
->    assumption that everything is a file on disk.
+>  - switchOn() SKIPS THE GATE ENTIRELY when no RuntimeDef matches, so
+>    cloud/PWA/terminal configs bypass it — the same wrong assumption that
+>    everything is a file on disk. (resolveNpuModelPath's auto-scan is GONE —
+>    pin-only now. greenLight covers 3 of 4: engine, assets, road/weight.)
 >  - BrowserPane's download listener writes to PUBLIC /Download via
 >    setDestinationInExternalPublicDir — app doesn't own it, and it lands in a
 >    directory the auto-scanner sweeps. Nothing registers for DownloadManager
@@ -275,8 +268,19 @@
 >     QAIRT's own primitives (Graph Priority, Multi-Graph Switching, Yielding
 >     and Pre-Emption, VTCM Sharing, Init/Execute Cancellation) — do NOT
 >     hand-roll a Kotlin mutex above the layer that knows HMX/HVX contention.
->     NOTE: llama.cpp-npu uses a SINGLE NPU session and says QNN uses multiple
->     sessions to avoid that limit — co-residency is a QAIRT capability.
+>     HOW HTP IS ACTUALLY REACHED (operator, verified in the GenieX fork):
+>     ggml/HTP kernels are the FLOOR. llama-server built with the HTP backend
+>     hits Hexagon directly — no GenieX required. The operator has Llama.server/
+>     in HARNESS/ and the libggml-htp-v* set. GenieX is a WRAPPER over the same
+>     kernels (third-party/ vendors llama.cpp + notes/ tracks overlay-htp).
+>     Device addressing, from /workspace/geniex/notes/run.md: aliases cpu / gpu /
+>     npu(=HTP0, pinned, SLOWER) / hybrid(=per-tensor scheduler, FASTER ~90 vs
+>     ~60 tok/s prefill). Concrete ids HTP0,HTP1,HTP2,HTP3 pass through via
+>     <plugin>:<device>. qairt exposes ONE device (NPU) and forces ngl=0.
+>     So co-residency is ADDRESSING, not a scheduler to write — but whether two
+>     models truly run concurrently is UNVERIFIED on device.
+>     QAIRT models need a geniex.json; worked example granite4_micro at
+>     yichqian/geniex-qairt-models.
 > So NPU arbitration is a MODE, not a permanent condition. Nothing in the Four
 > Rooms owns it: Terminal defines, Settings supplies, Monitor validates (static,
 > no side effects), Router carries current. Execution-time arbitration between
@@ -295,9 +299,9 @@
 > implementation tying these together. See the vault; do not re-derive.
 >
 > ### 9. ASSET INVENTORY — verified 2026-08-01, operator's own screenshots
-> THE BOOT LOG IS REACHABLE: `novus-boot.log` (~4kB) sits in the on-device
-> HARNESS/ folder, NOT under /sdcard/Android/data — so Termux CAN read it.
-> This is the crash evidence; it is the first thing to ask for.
+> novus-boot.log (~4kB) sits in HARNESS/ and IS readable from Termux — but it is
+> NOT written by Breadcrumb and is dated earlier. It is not the app's current
+> boot trail. See §4 for where the live log goes.
 > HARNESS/ also holds: hybrid_llama_qnn.pte (0.93GB, ExecuTorch-QNN),
 > qnn_llama_runner.zip, geniex-bench-android-arm64 (90MB), nexa.manifest,
 > snapdragon-npu-llm-main.zip, tokenizer.json/merges/special_tokens,

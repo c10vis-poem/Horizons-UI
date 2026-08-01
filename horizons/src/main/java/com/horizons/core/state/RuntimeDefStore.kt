@@ -132,6 +132,9 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
         candidateDirs.asSequence().map { File(it, name) }.firstOrNull { it.canRead() }
 
     val checks = mutableListOf<AssetCheck>()
+    // Real bytes of everything this config actually points at, summed from disk.
+    // No estimate, no constant — whatever is plugged in is what gets weighed.
+    var configBytes = 0L
 
     val bin = find(binaryName)
     checks += AssetCheck(
@@ -149,6 +152,7 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
 
     requiredAssets.forEach { asset ->
         val f = find(asset)
+        if (f != null) configBytes += f.length()
         checks += AssetCheck(
             "asset $asset",
             f != null,
@@ -158,6 +162,7 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
 
     if (argsTemplate.contains("{model}")) {
         val ok = modelPath != null && File(modelPath).canRead()
+        if (ok) configBytes += File(modelPath!!).length()
         checks += AssetCheck(
             "model plugged in",
             ok,
@@ -165,7 +170,7 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
         )
     }
 
-    checks += roadAndWeightLimit(context, modelPath)
+    checks += roadAndWeightLimit(context, configBytes)
 
     return checks
 }
@@ -178,20 +183,24 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
  *  architecture? If the vehicle is too big for the road, it's going to crash
  *  before it even gets going."
  *
- * This is the amperage limit, and per the master doc it exists SPECIFICALLY to
- * stop OOM crashes. greenLight() shipped without it for a long time, which is
- * how a config could be ALL GREEN and still be killed by Android's low-memory
- * killer seconds after loading — a death that leaves no stack trace, so it
- * reads as a mystery crash rather than a capacity problem.
+ * The amperage limit. Per the master doc it exists specifically to stop OOM
+ * crashes, and greenLight() shipped without it for a long time — which is how a
+ * config could read ALL GREEN and still be killed by Android's low-memory
+ * killer, a death that leaves no stack trace and so presents as a mystery.
  *
- * Deliberately static: reads ActivityManager's memory snapshot and the model's
- * size on disk. No network, no side effects, consistent with every other check
- * here.
+ * MEASURES, DOES NOT ESTIMATE. [configBytes] is summed from the actual files
+ * this config points at. Everything else comes from ActivityManager. There is
+ * deliberately no headroom constant: an earlier version carried one I picked
+ * myself, which is guessing on the operator's behalf and gets stale the moment
+ * a different model pair is plugged in. Report the three real numbers — what
+ * this config weighs, what is free now, what the device has in total — and let
+ * the operator judge. They know their own envelope; the app does not.
+ *
+ * ADVISORY. It colours the panel and never holds the switch shut.
  */
-private fun roadAndWeightLimit(context: Context, modelPath: String?): List<AssetCheck> {
+private fun roadAndWeightLimit(context: Context, configBytes: Long): List<AssetCheck> {
     val out = mutableListOf<AssetCheck>()
 
-    // Architecture. The daemons and the QNN/HTP skels are arm64-v8a only.
     val abis = android.os.Build.SUPPORTED_ABIS?.toList().orEmpty()
     out += AssetCheck(
         "architecture arm64-v8a",
@@ -200,72 +209,41 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
         advisory = true,
     )
 
-    // Weight vs available memory. Only meaningful once a model is plugged in.
-    val f = modelPath?.let { File(it) }?.takeIf { it.canRead() } ?: run {
-        out += AssetCheck("weight limit", true, "no model plugged in — nothing to weigh yet", advisory = true)
+    if (configBytes <= 0L) {
+        out += AssetCheck("weight limit", true, "nothing plugged in yet — nothing to weigh", advisory = true)
         return out
     }
 
     val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
     val mi = android.app.ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
-    val modelBytes = f.length()
-    val avail = mi.availMem
-    val needed = modelBytes + RUNTIME_HEADROOM_BYTES
 
     fun gb(b: Long) = String.format(java.util.Locale.US, "%.2f GB", b / 1_073_741_824.0)
 
+    // Unknown memory is not a failure — say so rather than inventing a verdict.
+    if (mi.totalMem <= 0L) {
+        out += AssetCheck(
+            "weight limit",
+            true,
+            "config weighs ${gb(configBytes)} — device memory unavailable to read",
+            advisory = true,
+        )
+        return out
+    }
+
+    val fits = configBytes < mi.availMem && !mi.lowMemory
     out += AssetCheck(
         "weight limit",
-        needed <= avail && !mi.lowMemory,
-        when {
-            mi.lowMemory -> "device is in a low-memory state (avail ${gb(avail)}) — free memory first"
-            needed > avail ->
-                "model ${gb(modelBytes)} + ${gb(RUNTIME_HEADROOM_BYTES)} runtime > ${gb(avail)} available"
-            else -> "model ${gb(modelBytes)}, ${gb(avail)} available"
+        fits,
+        buildString {
+            append("config ${gb(configBytes)} · free ${gb(mi.availMem)} · device ${gb(mi.totalMem)}")
+            if (mi.lowMemory) append(" · device is in a LOW MEMORY state")
+            if (configBytes >= mi.availMem) append(" · over by ${gb(configBytes - mi.availMem)}")
         },
         advisory = true,
     )
 
     return out
 }
-
-/**
- * Headroom reserved on top of the PRIMARY model's own bytes.
- *
- * This is not "a bit of slack for the runtime". The target deployment is the
- * dual-agent pair, both resident at once:
- *
- *   - executive model — Qwen 3.5 9B Q4_0, ~5.4 GB
- *   - query model     — Qwen 3.5 0.8B, always on, the one that decides whether
- *                       the executive gets woken at all
- *   - KV cache for both, the ggml/HTP runtime, and the app itself
- *
- * The operator's figures, which this constant is derived from and not the other
- * way round:
- *   - Qwen pair (0.8B query + 9B executive) WEIGHTS together: ~6.95 GB
- *   - Gemma set: ~7.21 GB — but Gemma is heavy per parameter (its 1B is over
- *     2 GB), so it is NOT the pick for the always-resident query slot; Qwen is
- *   both sit inside the same envelope, so the budget must cover ~7.2 GB of
- *   weights, not just the pinned primary
- *   - the device routinely has 10-12 GB free
- *   - any cap under ~9-9.5 GB total is not feasible for this stack
- *
- * So with a 5.4 GB primary pinned, the companion weights account for ~1.55 GB of
- * headroom, and KV cache + runtime + app take the remainder up to the ~9-9.5 GB
- * envelope. 4.0 GB over the primary lands at ~9.4 GB total.
- *
- * This is still a constant standing in for something the app should MEASURE —
- * sum what is actually plugged in against real availMem — which is the
- * operator's call and is recorded in CLAUDE.md. Do not treat the number as
- * settled design; treat it as a placeholder with its arithmetic shown so it can
- * be checked.
- *
- * An earlier value of 768 MB was set before the companion model was taken into
- * account and was far too low — it would have flagged a perfectly runnable
- * config as over-weight. Since this check is ADVISORY it could never have
- * blocked anything, but a wrong number that merely misinforms is still wrong.
- */
-private const val RUNTIME_HEADROOM_BYTES = 4096L * 1024L * 1024L
 
 class RuntimeDefStore(context: Context) {
 

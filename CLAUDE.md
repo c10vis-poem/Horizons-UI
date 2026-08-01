@@ -218,7 +218,43 @@
 >  - Two launcher icons: .MainActivity AND .uilocal.LocalHomeActivity both carry
 >    MAIN/LAUNCHER, running different code. Removing one is a pending operator call.
 >
-> ### 7. THE WIDER STACK (this app is one node)
+> ### 7. AESOP — the app is the EDGE NODE, and the protocol names it
+> AESOP (c10vis-poem/aesop) is a PROTOCOL, not a daemon set. Note: aesop-wiki.md
+> in the vault describes llamad/aesopd/protocol/bridge-protocol.md — NONE of that
+> exists in the repo. Six files: README, ARCHITECTURE, RESUME, protocol/tiers.md,
+> profiles/{nav,_example}.yaml. Read those, not the wiki page.
+> ROLES: query/tool-exec · executive · librarian/switchboard (the flywheel) ·
+> auditor (red). MEMORY: declarative (wiki markdown, canonical) · recall (OB1
+> vector) · strategic (ReasoningBank, fed by the auditor). Vector indexes are
+> DERIVED and rebuildable from the markdown — markdown is the source of truth.
+> profiles/nav.yaml: `phone: tiers:[edge], client: omni-claw` — THIS APP IS THE
+> EDGE CLIENT. Bindings: query on phone, executive {home: jetson, away: cloud},
+> librarian on jetson, auditor on cloud with edge_behavior: defer.
+> EDGE TIER CONTRACT (tiers.md) — to claim `edge` a node MUST provide:
+>   local small model or passthrough connector · camera/mic access ·
+>   A DURABLE OFFLINE ACTION QUEUE FOR TIER-2 DEFERRALS  ← NOT BUILT
+> The queue is not optional polish; it is why the audit boundary works:
+>   tier0 none (read/reason) · tier1 self (reversible local writes, self-pass +
+>   log) · tier2 independent (irreversible/outbound + MEMORY COMMITS need the
+>   auditor) · offline_tier2 QUEUE for audit-on-reconnect.
+> OPERATOR (2026-08-01): when NOT tailscaled into the home network, the phone
+> runs BOTH models locally — it cannot reach the jetson executive. The profile
+> does NOT express this: executive fallback is [cloud, personal], and `personal`
+> is the computer. THERE IS NO EDGE FALLBACK FOR EXECUTIVE. Flag to the operator
+> before building around it. Consequence for this app:
+>   - HOME (tailnet reachable): query only on-device. No NPU contention.
+>   - AWAY: query + executive BOTH on this NPU → turn-taking required. Use
+>     QAIRT's own primitives (Graph Priority, Multi-Graph Switching, Yielding
+>     and Pre-Emption, VTCM Sharing, Init/Execute Cancellation) — do NOT
+>     hand-roll a Kotlin mutex above the layer that knows HMX/HVX contention.
+>     NOTE: llama.cpp-npu uses a SINGLE NPU session and says QNN uses multiple
+>     sessions to avoid that limit — co-residency is a QAIRT capability.
+> So NPU arbitration is a MODE, not a permanent condition. Nothing in the Four
+> Rooms owns it: Terminal defines, Settings supplies, Monitor validates (static,
+> no side effects), Router carries current. Execution-time arbitration between
+> two live runtimes is an UNOWNED role — do not staple it onto the Monitor.
+>
+> ### 8. THE WIDER STACK (this app is one node)
 > Three-device Tailscale mesh: Razr (mobile orchestrator) · Jetson Orin Nano
 > Super (heavy inference, 500GB SSD, OB1, OmniRoute) · Rubik Pi 3 (UI/scripting
 > hub + Red Agent auditor). WebSocket router on the Jetson, not polling REST.

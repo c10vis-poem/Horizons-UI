@@ -287,6 +287,41 @@
 > trajectories feed recursive KAG training. AESOP is the operator's
 > implementation tying these together. See the vault; do not re-derive.
 >
+> ### 9. ASSET INVENTORY — verified 2026-08-01, operator's own screenshots
+> THE BOOT LOG IS REACHABLE: `novus-boot.log` (~4kB) sits in the on-device
+> HARNESS/ folder, NOT under /sdcard/Android/data — so Termux CAN read it.
+> This is the crash evidence; it is the first thing to ask for.
+> HARNESS/ also holds: hybrid_llama_qnn.pte (0.93GB, ExecuTorch-QNN),
+> qnn_llama_runner.zip, geniex-bench-android-arm64 (90MB), nexa.manifest,
+> snapdragon-npu-llm-main.zip, tokenizer.json/merges/special_tokens,
+> and subfolders Llama.server/ + QNN-QAIRT/.
+> ON DEVICE (MODELS/): gemma-4-12b-it 6.98GB · gemma-4-12B-it 6.72GB ·
+> gemma-4-E4B_q4 5.15GB · gemma-4-E2B_q4 3.35GB · mtp-gemma-4-E2B 170MB ·
+> qwen3_vl_4b_instruct 3.04GB(zip) · Qwen3.5-2B-Q4_0 1.21GB ·
+> Qwen3.5-9B-Q4_0 5.38GB. NO 0.8B. NO VOICE MODELS AT ALL.
+> HUGGING FACE (Mer0vin8ian, 13 models): Qwen3.5-0.8B (tagged VLM — the query
+> model can SEE, which matches nav.yaml giving the phone the best sensors) ·
+> Granite-4.0-Micro · Phi-4-Mini-Instruct · Qwen3.5-9B-GGUF · Gemma-4-E4B-it ·
+> gemma-4-12B-it-qat-GGUF · moonshine-streaming-small(-onnx) · hexagon-sdk(priv).
+> Granite/Phi/0.8B are `library: pytorch` + tags android/generative_ai — the AI
+> Hub SOURCE-model pattern. The deployable per-chipset bundle comes from
+> `qai-hub-models fetch`, i.e. AI Hub compiles, not you. Both Granite-4.0-Micro
+> and Phi-4-Mini-Instruct have Qualcomm AI Hub pages saved in Drive; operator
+> wants to try both. They are qairt-backend candidates needing NO BYOM compile,
+> unlike the 9B.
+> MOONSHINE — TWO INCOMPATIBLE OPTIONS, VERIFIED BY FILE LISTING:
+>   theirs  Mer0vin8ian/moonshine-streaming-small-onnx — Optimum layout:
+>           encoder_model_int8 75MB · decoder_model_int8 149MB ·
+>           decoder_with_past_model_int8 133MB · tokenizer.json
+>   sherpa  csukuangfj/sherpa-onnx-moonshine-base-en-int8 (~273MB) —
+>           preprocess · encode.int8 · uncached_decode.int8 ·
+>           cached_decode.int8 · tokens.txt
+>   Different filenames, different partitioning, different tokenizer format.
+>   THE STREAMING ONE WILL NOT LOAD INTO THE BUNDLED SHERPA AAR. For the app,
+>   use the sherpa one — the interaction model (VAD closes the mic, THEN
+>   transcribe) does not need streaming; the segment boundary IS the send.
+>   Keep streaming-small behind the same SttClient interface for later.
+>
 > HF_TOKEN / QAI_HUB_API_TOKEN come from the environment. Never hardcode them.
 > ```
 

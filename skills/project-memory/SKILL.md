@@ -172,3 +172,33 @@ the folder, not the file.
 | "Gemini oils up The Builder…duel" doc; `2. 2026-07-17.md` | AI transcripts. **Architecture is canon, implementation claims are not.** The duel doc retracts its own central claim mid-document. |
 | `#Useful_knowledge_/.../Fragmented QAT/` (FraQAT) | Old prior-art research. Never reach for it over the QAIRT SDK. |
 | `knowledge/device-inventory/DEVICE-INVENTORY.md` | Snapshot 2026-07-13. Re-verify sizes/versions. Its dual-backend line — llama.cpp (ggml, **HTP v68–v81** + CPU + OpenCL) — is the single most-misread sentence in the corpus. |
+
+---
+
+## Asset locations — where things actually live (2026-08-01)
+
+Four separate places. Confusing them wastes a session.
+
+| Where | Holds | Note |
+|---|---|---|
+| **On device — `HARNESS/`** | `novus-boot.log` (~4kB), `hybrid_llama_qnn.pte` 0.93GB, `qnn_llama_runner.zip`, `geniex-bench-android-arm64` 90MB, `nexa.manifest`, tokenizer files, `Llama.server/`, `QNN-QAIRT/` | **The boot log is HERE, not under /sdcard/Android/data — Termux CAN read it.** First place to look for crash evidence. |
+| **On device — `MODELS/`** | Gemma 6.98/6.72/5.15/3.35GB, mtp-gemma-4-E2B 170MB, qwen3_vl_4b 3.04GB, Qwen3.5-2B-Q4_0 1.21GB, Qwen3.5-9B-Q4_0 5.38GB | **No 0.8B. No voice models at all.** |
+| **Hugging Face — `Mer0vin8ian`** | 13 models incl. Qwen3.5-0.8B (**VLM**), Granite-4.0-Micro, Phi-4-Mini-Instruct, Qwen3.5-9B-GGUF, gemma-4-12B-it-qat-GGUF, moonshine-streaming-small-onnx, hexagon-sdk (private) | Granite/Phi/0.8B are `library: pytorch` + `android` tags = AI Hub **source** mirrors; the deployable bundle comes from `qai-hub-models fetch`. |
+| **Drive** | Per-model setup/install PDFs (Qualcomm AI Hub pages for Granite, Phi-4-Mini, Qwen3.5-0.8B/2B, Gemma-4-E4B, PiperTTS, LiteHRNet), GenieX README PDF, QAIRT manual | **Voice MODELS are not in Drive.** Their DOCS are in the vault at `##DEVICE-STT&TTS_/`. |
+
+### Moonshine: two options, not interchangeable — verified by file listing
+
+```
+Mer0vin8ian/moonshine-streaming-small-onnx   (Optimum/transformers export)
+  encoder_model_int8.onnx 75MB · decoder_model_int8.onnx 149MB
+  decoder_with_past_model_int8.onnx 133MB · tokenizer.json
+
+csukuangfj/sherpa-onnx-moonshine-base-en-int8   (~273MB, what sherpa wants)
+  preprocess.onnx · encode.int8.onnx
+  uncached_decode.int8.onnx · cached_decode.int8.onnx · tokens.txt
+```
+
+Different filenames, different partitioning, different tokenizer format. **The
+streaming one will not load into the sherpa AAR the app already bundles.** The
+app's interaction model (VAD closes the mic, *then* transcribe) does not need
+streaming — the segment boundary is the send signal.

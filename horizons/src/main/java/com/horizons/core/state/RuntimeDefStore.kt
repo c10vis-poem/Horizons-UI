@@ -148,8 +148,75 @@ fun RuntimeDef.greenLight(context: Context, modelPath: String?): List<AssetCheck
         )
     }
 
+    checks += roadAndWeightLimit(context, modelPath)
+
     return checks
 }
+
+/**
+ * Parameter #3 of the operator's four: THE ROAD & WEIGHT LIMIT.
+ *
+ * "Can this engine actually survive on this device? Is the model too heavy
+ *  (low memory/RAM), or is the program incompatible with the phone's
+ *  architecture? If the vehicle is too big for the road, it's going to crash
+ *  before it even gets going."
+ *
+ * This is the amperage limit, and per the master doc it exists SPECIFICALLY to
+ * stop OOM crashes. greenLight() shipped without it for a long time, which is
+ * how a config could be ALL GREEN and still be killed by Android's low-memory
+ * killer seconds after loading — a death that leaves no stack trace, so it
+ * reads as a mystery crash rather than a capacity problem.
+ *
+ * Deliberately static: reads ActivityManager's memory snapshot and the model's
+ * size on disk. No network, no side effects, consistent with every other check
+ * here.
+ */
+private fun roadAndWeightLimit(context: Context, modelPath: String?): List<AssetCheck> {
+    val out = mutableListOf<AssetCheck>()
+
+    // Architecture. The daemons and the QNN/HTP skels are arm64-v8a only.
+    val abis = android.os.Build.SUPPORTED_ABIS?.toList().orEmpty()
+    out += AssetCheck(
+        "architecture arm64-v8a",
+        abis.contains("arm64-v8a"),
+        if (abis.contains("arm64-v8a")) abis.joinToString() else "device reports ${abis.joinToString()}",
+    )
+
+    // Weight vs available memory. Only meaningful once a model is plugged in.
+    val f = modelPath?.let { File(it) }?.takeIf { it.canRead() } ?: run {
+        out += AssetCheck("weight limit", true, "no model plugged in — nothing to weigh yet")
+        return out
+    }
+
+    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+    val mi = android.app.ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+    val modelBytes = f.length()
+    val avail = mi.availMem
+    val needed = modelBytes + RUNTIME_HEADROOM_BYTES
+
+    fun gb(b: Long) = String.format(java.util.Locale.US, "%.2f GB", b / 1_073_741_824.0)
+
+    out += AssetCheck(
+        "weight limit",
+        needed <= avail && !mi.lowMemory,
+        when {
+            mi.lowMemory -> "device is in a low-memory state (avail ${gb(avail)}) — free memory first"
+            needed > avail ->
+                "model ${gb(modelBytes)} + ${gb(RUNTIME_HEADROOM_BYTES)} runtime > ${gb(avail)} available"
+            else -> "model ${gb(modelBytes)}, ${gb(avail)} available"
+        },
+    )
+
+    return out
+}
+
+/**
+ * Headroom reserved on top of the model's own bytes: runtime, KV cache, and
+ * the rest of the app. A model that exactly fits available RAM does not run —
+ * it gets the process killed. Conservative on purpose; a false RED costs the
+ * operator one glance, a false GREEN costs a crash with no stack trace.
+ */
+private const val RUNTIME_HEADROOM_BYTES = 768L * 1024L * 1024L
 
 class RuntimeDefStore(context: Context) {
 

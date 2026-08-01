@@ -171,6 +171,25 @@
 >    "build a backend."
 >
 > ### 6. KNOWN GAPS
+>  - THE APP IS THE WORKBENCH — everything gets DEFINED AND COMPILED INSIDE THE
+>    APP RUNTIME. The app's job is to make PRIMITIVES available and let a runtime
+>    definition compose them: daemons · sockets · websockets · inbound listeners
+>    /webhooks · file pickers · in-process SDK calls · cloud endpoints. It is NOT
+>    to hardcode one welded path per capability. That welding is exactly why
+>    capabilities can only be TRIGGERED by the one thing wired to them and never
+>    ADDRESSED — the reason STT is a method on LlmRuntime instead of a component.
+>    STATE OF THE PALETTE:
+>      daemon spawn      — EXISTS (DaemonLauncher, sh -T- detach)
+>      loopback HTTP     — EXISTS (NpuClient -> :8080)
+>      websocket client  — MISSING (needed for AESOP aesopd :8765)
+>      inbound listener  — MISSING (app has ZERO; this is the "Termux backend")
+>      file picker (SAF) — MISSING (ACTION_OPEN_DOCUMENT, no permission needed)
+>      browser download  — EXISTS but lands in PUBLIC /Download, app doesn't own it
+>      in-process SDK    — MISSING (GenieX Maven SDK, no NDK required)
+>      cloud endpoint    — partial (CloudLlmRuntime), bypasses the gate
+>    RuntimeDef today expresses ONLY "spawn a binary, poll a port". That single
+>    shape is why cloud/localhost/PWA configs fall out of the launcher's logic
+>    and why switchOn() skips the gate when no RuntimeDef matches.
 >  - THE DUAL-AGENT PAIR IS THE TARGET, both resident: Qwen3.5-0.8B as the
 >    always-on QUERY model (decides whether to wake the big one) + Qwen3.5-9B
 >    Q4_0 (~5.4GB) as the EXECUTIVE. Operator has 10-12GB free routinely; any

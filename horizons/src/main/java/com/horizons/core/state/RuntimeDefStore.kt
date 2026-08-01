@@ -240,17 +240,28 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
  *                       the executive gets woken at all
  *   - KV cache for both, the ggml/HTP runtime, and the app itself
  *
- * The operator's own figure: the device routinely has 10-12 GB free, and a cap
- * anywhere under ~9-9.5 GB total is not feasible for this stack. 3.5 GB on top
- * of a 5.4 GB primary lands at ~8.9 GB, which is inside that envelope with the
- * companion model accounted for rather than ignored.
+ * The operator's figures, which this constant is derived from and not the other
+ * way round:
+ *   - the two sets of WEIGHTS together sit at ~6.95 GB
+ *   - the device routinely has 10-12 GB free
+ *   - any cap under ~9-9.5 GB total is not feasible for this stack
+ *
+ * So with a 5.4 GB primary pinned, the companion weights account for ~1.55 GB of
+ * headroom, and KV cache + runtime + app take the remainder up to the ~9-9.5 GB
+ * envelope. 4.0 GB over the primary lands at ~9.4 GB total.
+ *
+ * This is still a constant standing in for something the app should MEASURE —
+ * sum what is actually plugged in against real availMem — which is the
+ * operator's call and is recorded in CLAUDE.md. Do not treat the number as
+ * settled design; treat it as a placeholder with its arithmetic shown so it can
+ * be checked.
  *
  * An earlier value of 768 MB was set before the companion model was taken into
  * account and was far too low — it would have flagged a perfectly runnable
  * config as over-weight. Since this check is ADVISORY it could never have
  * blocked anything, but a wrong number that merely misinforms is still wrong.
  */
-private const val RUNTIME_HEADROOM_BYTES = 3584L * 1024L * 1024L
+private const val RUNTIME_HEADROOM_BYTES = 4096L * 1024L * 1024L
 
 class RuntimeDefStore(context: Context) {
 

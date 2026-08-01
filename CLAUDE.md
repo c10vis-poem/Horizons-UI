@@ -91,8 +91,11 @@
 >      Sometimes ZERO items, sometimes a whole list.
 >   3. THE ROAD & WEIGHT LIMIT (hardware/memory) — can this survive on THIS
 >      device? Too heavy for RAM? Wrong architecture? This is the amperage
->      limit, and it exists specifically to stop OOM crashes. greenLight()
->      does NOT check it today.
+>      limit, and it exists specifically to stop OOM crashes. greenLight() NOW
+>      CHECKS THIS (arch + weight), and it is ADVISORY — it reports the real
+>      numbers (config bytes · free · device total) and never holds the switch
+>      shut. Per the master doc the hard red banner gets stripped out; the Router
+>      "just does it's going to try to connect whatever you put on there."
 >   4. THE COMMUNICATION (syntax AND handshake — ONE parameter, on purpose)
 >      "there is no need to separate the syntax and the endpoint — they both
 >      just represent how we talk to the engine and how it talks back."

@@ -323,7 +323,18 @@
 > and Phi-4-Mini-Instruct have Qualcomm AI Hub pages saved in Drive; operator
 > wants to try both. They are qairt-backend candidates needing NO BYOM compile,
 > unlike the 9B.
-> MOONSHINE — TWO INCOMPATIBLE OPTIONS, VERIFIED BY FILE LISTING:
+> MOONSHINE — TWO ENVIRONMENTS, TWO DIFFERENT CORRECT ANSWERS (operator):
+>   IN THE APK  = **tiny**, ONNX, bundled in assets/, run on ORT in-process.
+>     The model SHIPS INSIDE THE APK, so SIZE IS THE BUDGET — base is bloat.
+>     Zero permissions, no download, no file picker, no external storage.
+>     The pattern already exists: SileroVadDetector runs raw ai.onnxruntime
+>     against assets/silero_vad.onnx. STT is the same shape. This means the
+>     sherpa-vs-Optimum file-layout question below is IRRELEVANT for the app.
+>   IN AESOP (Termux/proot) = **base-en-int8**, per aesop RESUME.md ("chosen
+>     over tiny for quality"). Models live in a shared ~/models/ on disk where
+>     size is cheap, and sherpa-onnx runs there as a glibc runtime.
+>   Do NOT collapse these into one choice. Different host, different constraint.
+> MOONSHINE FILE LAYOUTS (matters only for the sherpa/proot side):
 >   theirs  Mer0vin8ian/moonshine-streaming-small-onnx — Optimum layout:
 >           encoder_model_int8 75MB · decoder_model_int8 149MB ·
 >           decoder_with_past_model_int8 133MB · tokenizer.json

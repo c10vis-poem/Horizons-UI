@@ -135,11 +135,18 @@
 >    INSTANCE that never re-read => a Router flip was invisible to the launcher.
 >    Fixed via reloadIfChanged().
 > STILL UNPROVEN: the trigger of the FIRST ~90s crash.
-> READ THE LOG IN THE APP: Artifacts tile (ArtifactsPane.kt:223 renders
-> Breadcrumb.readAll()). DO NOT tell the operator to tail it from Termux —
-> VERIFIED DEAD 2026-07-31: Android 11+ blocks /sdcard/Android/data/<pkg>/ to
-> every other app and MANAGE_EXTERNAL_STORAGE is explicitly carved out.
-> boot.log lines are tagged [main]/[clifford].
+> WHERE THE LOG IS (changed 2026-08-01, commit 11b62ff):
+> Breadcrumb now writes to /sdcard/Documents/Horizons/diag/ when
+> MANAGE_EXTERNAL_STORAGE is GRANTED — readable from Termux with a plain `cat`.
+> If the permission is not granted it silently falls back to
+> getExternalFilesDir/diag, which Android 11+ blocks to every other app (that
+> carve-out is real and MANAGE_EXTERNAL_STORAGE does not open it). So:
+>   - Artifacts tile prints the ACTUAL path as its first line. Check it.
+>   - /sdcard/Documents/... -> tail it from Termux, fine.
+>   - /sdcard/Android/data/... -> permission not granted; in-app only.
+> Do not assert either without looking at that first line.
+> boot.log lines are tagged [main]/[clifford]. novus-boot.log in the on-device
+> HARNESS/ folder is a DIFFERENT, older file — not written by Breadcrumb.
 >
 > ### 5. PHASE 1 SCOPE (operator): browser · voice · Termux backend
 > VOICE LAYER = ONE ONNX PLANE, three parts: Silero VAD (endpointing) +

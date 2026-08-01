@@ -144,7 +144,25 @@
 > ### 5. PHASE 1 SCOPE (operator): browser · voice · Termux backend
 > VOICE LAYER = ONE ONNX PLANE, three parts: Silero VAD (endpointing) +
 > Moonshine STT (missing) + Kokoro TTS (works, in-process on sherpa AAR).
-> SILERO VAD IS ALREADY WIRED: VoiceLoopController takes vad: VadDetector,
+> REFERENCE IMPLEMENTATION EXISTS — vault ##DEVICE-STT&TTS_/architecture.md.
+> AESOP's voice-engine runs all three on ONE sherpa-onnx runtime (Termux+proot):
+>   TTS Kokoro multi-lang v1.0 ~382MB  csukuangfj/kokoro-multi-lang-v1_0
+>   STT Moonshine base-en int8 ~273MB  csukuangfj/sherpa-onnx-moonshine-base-en-int8
+>   VAD Silero v5              ~629KB  R4kSo1997/sherpa-onnx-silero-vad-v5
+>   pipeline VAD -> STT -> callback -> TTS; VAD threshold 0.5, min_silence 500ms,
+>   max_speech 30s, 16kHz, 512-sample window.
+> THE APP ALREADY BUNDLES sherpa-onnx-1.13.2.aar (Kokoro TTS runs on it). So
+> Moonshine + Silero are MORE MODEL LOADS ON A RUNTIME THAT IS ALREADY THERE —
+> not a new integration, no NDK, no daemon.
+> BUT THE EXISTING VAD IS THE WRONG SHAPE: SileroVadDetector.kt bypasses the AAR
+> (raw ai.onnxruntime against assets/silero_vad.onnx), is v4 not v5, and RESETS
+> LSTM STATE EVERY CALL — its own comment says "stateless, single-chunk... 20-30ms
+> energy gate". An energy gate CANNOT implement "silence sends it": min_silence
+> 500ms needs state ACROSS chunks. Replace with sherpa's VoiceActivityDetector
+> (accept_waveform -> vad.pop(), segments carry .start/.samples), matching the
+> Python reference. VadFactory falls back to RmsVadDetector when the asset is
+> absent, so nothing breaks while this is swapped.
+> VoiceLoopController takes vad: VadDetector,
 > LiveChatService/ScreenShareService build it via VadFactory.create(). No
 > push-to-talk, no fixed window, no timeout — continuous endpointing, MIT,
 > sub-1ms per 30ms chunk.

@@ -2,6 +2,7 @@ package com.horizons.core.diag
 
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import android.os.Process
 import java.io.File
 import java.io.FileWriter
@@ -41,15 +42,14 @@ object Breadcrumb {
         if (installed) return
         installed = true
 
-        val d = ctx.getExternalFilesDir(null)?.let { File(it, "diag") }
-            ?: File(ctx.filesDir, "diag")
-        d.mkdirs()
+        val d = resolveDiagDir(ctx)
         dir = d
 
         rotateIfTooBig(File(d, BOOT_FILE))
         FileTail.rotateIfTooBig(File(d, CRASH_FILE), MAX_CRASH_SIZE_BYTES)
 
         drop("session_start " +
+            "diag=${d.absolutePath} " +
             "pid=${Process.myPid()} " +
             "android=${Build.VERSION.SDK_INT} " +
             "device=${Build.MANUFACTURER}/${Build.MODEL}")
@@ -68,6 +68,59 @@ object Breadcrumb {
             upstream?.uncaughtException(thread, throwable)
         }
     }
+
+    /**
+     * Where the diagnostic logs live.
+     *
+     * WHY THIS IS NOT JUST getExternalFilesDir: on Android 11+ every other app —
+     * Termux included — is locked out of /sdcard/Android/data/<pkg>/, and
+     * MANAGE_EXTERNAL_STORAGE is explicitly carved out of that. So a log written
+     * there can only be read by this app's own UI. Triage on a phone-only build
+     * repeatedly stalled on exactly that: the crash trail existed and nobody
+     * could get at it.
+     *
+     * Preference order, first writable wins:
+     *   1. /sdcard/Documents/Horizons/diag  — readable by Termux and any file
+     *      manager. Requires MANAGE_EXTERNAL_STORAGE, which the manifest
+     *      declares; if the user has not granted it, this simply fails the
+     *      write probe and we move on.
+     *   2. getExternalFilesDir/diag         — app-private external, visible to
+     *      this app only. The previous behaviour.
+     *   3. filesDir/diag                    — internal, always writable.
+     *
+     * Never throws. This runs on the boot path, and a diagnostics helper that
+     * can crash startup would be worse than no diagnostics at all — which is
+     * the mistake this file already made once.
+     */
+    private fun resolveDiagDir(ctx: Context): File {
+        runCatching {
+            val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+                Environment.isExternalStorageManager()
+            if (allowed) {
+                val shared = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+                    "Horizons/diag",
+                )
+                if ((shared.isDirectory || shared.mkdirs()) && isWritable(shared)) return shared
+            }
+        }
+        val fallback = ctx.getExternalFilesDir(null)?.let { File(it, "diag") }
+            ?: File(ctx.filesDir, "diag")
+        runCatching { fallback.mkdirs() }
+        return fallback
+    }
+
+    /** Cheap write probe — mkdirs() succeeding does not prove we may write. */
+    private fun isWritable(d: File): Boolean = runCatching {
+        val probe = File(d, ".probe")
+        if (!probe.exists()) probe.createNewFile()
+        val ok = probe.canWrite()
+        probe.delete()
+        ok
+    }.getOrDefault(false)
+
+    /** Absolute path of the log directory, for the Artifacts pane to display. */
+    fun location(): String = dir?.absolutePath ?: "(not initialised)"
 
     /**
      * Append a single breadcrumb. Cheap — no allocation beyond the line itself.
@@ -94,6 +147,11 @@ object Breadcrumb {
         val boot = FileTail.text(File(d, BOOT_FILE), 64 * 1024).ifEmpty { "(no boot.log)" }
         val crash = FileTail.text(File(d, CRASH_FILE), 64 * 1024)
         return buildString {
+            // Lead with the path. When it starts with /sdcard/Documents the
+            // operator can read these from Termux directly; when it starts with
+            // /sdcard/Android/data they cannot, and knowing which is which has
+            // cost more triage time than any bug in here.
+            append("== diag dir ==\n").append(d.absolutePath).append("\n\n")
             append("== boot.log (tail) ==\n").append(boot)
             if (crash.isNotEmpty()) append("\n== crash.log (tail) ==\n").append(crash)
         }

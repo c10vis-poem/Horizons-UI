@@ -171,6 +171,16 @@
 >    "build a backend."
 >
 > ### 6. KNOWN GAPS
+>  - THE DUAL-AGENT PAIR IS THE TARGET, both resident: Qwen3.5-0.8B as the
+>    always-on QUERY model (decides whether to wake the big one) + Qwen3.5-9B
+>    Q4_0 (~5.4GB) as the EXECUTIVE. Operator has 10-12GB free routinely; any
+>    cap under ~9-9.5GB total is not feasible. RuntimeDef has NO concept of a
+>    companion model yet — one KEY_ACTIVE_MODEL pin only.
+>  - greenLight's RUNTIME_HEADROOM_BYTES (3.5GB) is a PLACEHOLDER I picked, not
+>    a measurement. Operator's call: the app should COMPUTE this — sum what is
+>    actually plugged in, compare to real availMem — not carry a constant.
+>  - Advisory vs blocking AssetCheck is not rendered differently in
+>    MonitorPane/RouterPane. A red advisory currently looks like a hard failure.
 >  - temperature hardcoded (NpuClient:101, CloudLlmRuntime:122). verbosity has a
 >    Settings slider NOTHING READS; debugLogLevel likewise. Cores don't exist.
 >    Must become real RuntimeDef params BEFORE the runtime-agnostic launcher.

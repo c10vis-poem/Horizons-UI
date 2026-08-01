@@ -87,11 +87,16 @@ find . -type f ! -name "*.*" -exec file -b {} \; | sort | uniq -c
 that answers "what will GenieX load", is not in it. The 7-page PDF in Drive has
 it. If a converted doc looks thin for its subject, go find the original.
 
-**3. Markdown extraction discards every image.** Diagrams in the Qualcomm PDFs
-are unreachable by text search — both embedded rasters and vector drawings.
-`fitz` `page.get_images()` only finds rasters; vector diagrams need
-`page.get_drawings()` and a page render. Do not conclude a diagram is absent
-because grep found nothing.
+**3. Images: SOLVED — check for them before hunting.** The vault-repair session
+built `.migrate/extract_images.py` (mutool-based, no PyMuPDF): `mutool extract`
+for rasters, `mutool draw -F trace` to detect vector diagrams, then a page
+render. **7,381 images from 66 PDFs + 7 `.mht` files** are already extracted into
+sibling `<docname>_images/` folders, with an `## Extracted images` section
+appended to each `.md` so grep-by-caption reaches them. The Qualcomm AI Engine
+Direct stack diagram is at
+`#QAIRT_main/Qualcomm user-Guides/Qualcomm AI Engine Direct SDK | Qualcomm Developer.pdf_images/page-3-diagram.png`.
+`ls **/*_images/` BEFORE concluding a diagram is unreachable — this session
+burned a large budget hunting one that was already on disk.
 
 **4. Read the FOLDER, not the file.** Siblings go deeper on different parts.
 Numbered folders are conversation series — pulling `3.` out of a 1-9 series
@@ -107,10 +112,11 @@ which is false and misled multiple sessions; the compiled `libggml-htp-v79.so`
 sitting three folders away disproved it. Any summary here can carry that rot,
 including this skill.
 
-**7. `build_rag_index.py` self-poisons.** `load_chunks` walks all of
-`RAG_LIBRARY` including its own `_index/meta.jsonl`, which has a different
-schema. First build succeeds; every rebuild KeyErrors on `text`. Exclude
-`_index` when rebuilding.
+**7. `build_rag_index.py` — contested, verify before repeating the claim.** One
+session hit `KeyError: 'text'` on rebuild (`load_chunks` walking its own
+`_index/meta.jsonl`); the vault-repair session could NOT reproduce it, verified
+60 docs / 2,211 chunks stable across three consecutive rebuilds, and hardened
+the exclusion anyway. Run it before asserting either way.
 
 ---
 

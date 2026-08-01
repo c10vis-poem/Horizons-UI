@@ -27,9 +27,12 @@
 >    Confirm what they're answering before building on it.
 >
 > ### 1. RUNTIME TRUTH — read before saying ANYTHING about backends
-> SOURCE OF TRUTH: the GenieX README, in Drive at #QAIRT_main/#GenieX/ as a
-> 7-page PDF (pages 3 and 6). The vault .md of that page is the repo FILE TREE
-> ONLY — the README body with this table is not in it. Read the PDF.
+>   SOURCE OF TRUTH, in order: (1) the FORK — /workspace/geniex (attach
+> c10vis-poem/geniex), notes/run.md + README.md, always current; (2) the vault's
+> live capture `#QAIRT_main/#GenieX/README (c10vis-poem／GenieX fork).md`
+> (+ _images/), pulled from the fork by the vault-repair session; (3) the Drive
+> 7-page PDF, pages 3 and 6. The OTHER vault .md in that folder — the one named
+> after the GitHub page title — is the repo FILE TREE only. Don't use it.
 >
 > GenieX is ONE runtime with TWO backends. The fork is INSIDE GenieX; it is not
 > GenieX-versus-something-else:
@@ -352,8 +355,9 @@ the doc has drifted and you just found it.
 | Claim | Check | Expect |
 |---|---|---|
 | ggml reaches Hexagon HTP | `ls "#AESOP_HORIZONS-UI_Master/(AESOP.]build/##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/"libggml-*` | `libggml-hexagon.so` + `libggml-htp-v73/v75/v79/v81.so` |
-| GenieX = one runtime, two backends | open `#QAIRT_main/#GenieX/*.pdf`, **page 6** | table: `llama_cpp` (GGUF, NPU/GPU/CPU) vs `qairt` (bundle, NPU only) |
-| The GenieX vault `.md` is NOT the README | `wc -c "#QAIRT_main/#GenieX/"*.md` | ~9.7 kB — repo file tree only, no runtime table |
+| GenieX = one runtime, two backends | `grep -n "llama_cpp\|qairt" /workspace/geniex/README.md` | line ~191 table: `llama_cpp` (GGUF, NPU/GPU/CPU) vs `qairt` (bundle, NPU only) |
+| HTP device addressing | `sed -n '18,50p' /workspace/geniex/notes/run.md` | aliases cpu/gpu/npu(=HTP0, pinned, SLOWER)/hybrid(FASTER); ids HTP0-HTP3 |
+| Vault carries a live GenieX README | `ls "#QAIRT_main/#GenieX/"` | `README (c10vis-poem／GenieX fork).md` + `_images/` — use this, not the page-title .md |
 | AESOP has no bridge/daemons | `ls /workspace/aesop` (attach `c10vis-poem/aesop` first) | 6 files. No `aesopd`, no `voice-engine/`, no `protocol/bridge-protocol.md` |
 | This app is AESOP's edge client | `grep -A3 "^  phone:" /workspace/aesop/profiles/nav.yaml` | `tiers: [edge]` … `client: omni-claw` |
 | Edge tier requires an action queue | `grep "edge" /workspace/aesop/protocol/tiers.md` | "durable offline **action queue** for Tier-2 deferrals" |

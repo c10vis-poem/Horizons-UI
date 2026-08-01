@@ -93,10 +93,27 @@ data class RuntimeDef(
     }
 }
 
-/** One green light on the fuse box panel. */
-data class AssetCheck(val label: String, val ok: Boolean, val detail: String)
+/**
+ * One green light on the fuse box panel.
+ *
+ * [advisory] marks a check that REPORTS but never REFUSES. The operator's rule:
+ * "the router doesn't need to think about saying yes or no, it just does — it's
+ * going to try to connect whatever you put on there." The master doc is explicit
+ * that the hard red banner refusing to turn on gets stripped out. So a check
+ * that can't be satisfied by editing the config — you cannot make a 5.4 GB model
+ * smaller from this screen — must not block the switch. Tell the operator the
+ * numbers and let them decide. Inventing a gotcha and then enforcing it against
+ * ourselves is not a feature.
+ */
+data class AssetCheck(
+    val label: String,
+    val ok: Boolean,
+    val detail: String,
+    val advisory: Boolean = false,
+)
 
-val List<AssetCheck>.allGreen: Boolean get() = isNotEmpty() && all { it.ok }
+/** Advisory checks colour the panel but never hold the switch shut. */
+val List<AssetCheck>.allGreen: Boolean get() = isNotEmpty() && all { it.ok || it.advisory }
 
 /**
  * Static green-light check — file presence/readability/exec bit only, no
@@ -180,11 +197,12 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
         "architecture arm64-v8a",
         abis.contains("arm64-v8a"),
         if (abis.contains("arm64-v8a")) abis.joinToString() else "device reports ${abis.joinToString()}",
+        advisory = true,
     )
 
     // Weight vs available memory. Only meaningful once a model is plugged in.
     val f = modelPath?.let { File(it) }?.takeIf { it.canRead() } ?: run {
-        out += AssetCheck("weight limit", true, "no model plugged in — nothing to weigh yet")
+        out += AssetCheck("weight limit", true, "no model plugged in — nothing to weigh yet", advisory = true)
         return out
     }
 
@@ -205,6 +223,7 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
                 "model ${gb(modelBytes)} + ${gb(RUNTIME_HEADROOM_BYTES)} runtime > ${gb(avail)} available"
             else -> "model ${gb(modelBytes)}, ${gb(avail)} available"
         },
+        advisory = true,
     )
 
     return out

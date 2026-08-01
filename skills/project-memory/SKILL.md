@@ -202,3 +202,40 @@ Different filenames, different partitioning, different tokenizer format. **The
 streaming one will not load into the sherpa AAR the app already bundles.** The
 app's interaction model (VAD closes the mic, *then* transcribe) does not need
 streaming — the segment boundary is the send signal.
+
+---
+
+## The folder tree IS the architecture — read it before reading any file
+
+`#AESOP_HORIZONS-UI_Master/(AESOP.]build/` is not storage, it is the component
+map. One folder per component of the build, and **the nesting is a claim about
+the design**.
+
+```
+#QAIRT_main/                     ← the Qualcomm runtime stack
+    #GenieX/                     ← GenieX is INSIDE QAIRT, not a peer of it
+    #QAIRT/                      ← the 7 manual sections
+    QAIRT-SDK/
+    Qualcomm user-Guides/
+    Research.NPU/
+##DEVICE-STT&TTS_/               ← ONE component: Silero + Moonshine + Kokoro
+##OB1_/  ##REASONING-BANK_/  ##Mem0.AI/  ##LLM-WIKI_OPEN-WIKI.main_/
+                                 ← four SIBLINGS = four distinct memory roles
+#QWEN_MODELS/  #UNSLOTH_MEROVINGIAN/  #LLAMA CPP NPU/
+#HERMES_AGENT/  #AIDER_AGENT/  #OPEN-CLAUDE_ANDROID/  #CLAUDE.CODE_ANDROID-CLI/
+##OMNI-ROUTE_/  ##GRAPHIFY/  ##Notebooklm-py/  ##OBSIDIAN-SKILLS_/  ##TERMUX_main/
+##AESOP/  #GOOGLE _AGENTIC-AI/  #SKILLS/  Docker/
+```
+
+Two things this tells you for free, that otherwise cost several documents each:
+
+- **GenieX nested under `#QAIRT_main` means GenieX is a layer of QAIRT.** The
+  QAIRT Overview confirms it (SNPE / QNN / **GENIE** are the SDKs; QAIRT API sits
+  beneath them; HTP is a *backend*) — but the folder said so first.
+- **`##DEVICE-STT&TTS_` being one folder means the voice layer is one plane**,
+  not three integrations. Its `architecture.md` confirms it: all three models on
+  a single sherpa-onnx runtime.
+
+So: `find <build> -maxdepth 2 -type d` before opening anything. Where a thing
+sits tells you what it is, and it is faster and more current than any prose in
+this corpus — folders get moved when the design changes; sentences do not.

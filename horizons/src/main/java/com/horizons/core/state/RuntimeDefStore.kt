@@ -243,7 +243,8 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
  * The operator's figures, which this constant is derived from and not the other
  * way round:
  *   - Qwen pair (0.8B query + 9B executive) WEIGHTS together: ~6.95 GB
- *   - Gemma set: ~7.21 GB
+ *   - Gemma set: ~7.21 GB — but Gemma is heavy per parameter (its 1B is over
+ *     2 GB), so it is NOT the pick for the always-resident query slot; Qwen is
  *   both sit inside the same envelope, so the budget must cover ~7.2 GB of
  *   weights, not just the pinned primary
  *   - the device routinely has 10-12 GB free

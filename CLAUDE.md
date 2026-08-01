@@ -334,6 +334,41 @@
 
 ---
 
+## VERIFY BEFORE YOU CITE
+
+Every fact above is derived, and derived facts rot. The corrections in this
+project have *always* come from artifacts — a `.so` on disk, a file listing, a
+page of a PDF, the actual contents of a repo — and the errors have *always*
+come from prose that was true once. This file is prose.
+
+So: for each load-bearing claim, the check that proves it. Run the check, don't
+quote the claim. Two seconds each, and a failed check is information — it means
+the doc has drifted and you just found it.
+
+| Claim | Check | Expect |
+|---|---|---|
+| ggml reaches Hexagon HTP | `ls "#AESOP_HORIZONS-UI_Master/(AESOP.]build/##LLM-WIKI_OPEN-WIKI.main_/llm-wiki/"libggml-*` | `libggml-hexagon.so` + `libggml-htp-v73/v75/v79/v81.so` |
+| GenieX = one runtime, two backends | open `#QAIRT_main/#GenieX/*.pdf`, **page 6** | table: `llama_cpp` (GGUF, NPU/GPU/CPU) vs `qairt` (bundle, NPU only) |
+| The GenieX vault `.md` is NOT the README | `wc -c "#QAIRT_main/#GenieX/"*.md` | ~9.7 kB — repo file tree only, no runtime table |
+| AESOP has no bridge/daemons | `ls /workspace/aesop` (attach `c10vis-poem/aesop` first) | 6 files. No `aesopd`, no `voice-engine/`, no `protocol/bridge-protocol.md` |
+| This app is AESOP's edge client | `grep -A3 "^  phone:" /workspace/aesop/profiles/nav.yaml` | `tiers: [edge]` … `client: omni-claw` |
+| Edge tier requires an action queue | `grep "edge" /workspace/aesop/protocol/tiers.md` | "durable offline **action queue** for Tier-2 deferrals" |
+| The four fuse params (not five) | `grep -n "Grandma or 5-year-old" -A 20` the Build Map | Engine · Fuel&Cargo · Road&WeightLimit · Communication |
+| greenLight checks the amperage limit | `grep -n "roadAndWeightLimit" horizons/src/main/java/com/horizons/core/state/RuntimeDefStore.kt` | defined + called; `advisory = true` on both checks |
+| STT genuinely absent | `grep -rn "streamAudio" horizons/src/main/java/com/horizons/core/llm/LlmRuntime.kt` | default impl discards the wav |
+| Where the log actually lands | launch app → **Artifacts tile, first line** | `/sdcard/Documents/...` = tailable · `/sdcard/Android/data/...` = in-app only |
+| Vault has no stranded raw PDFs | `find . -type f ! -name "*.*" -exec file -b {} \; \| grep -c PDF` | `0` |
+
+**If a check disagrees with the prose above, the check wins and the prose is
+wrong.** Fix the prose in the same session, or you have handed the next one a
+landmine — which is exactly how `aesop-wiki.md` survived long enough to mislead
+three sessions in a row.
+
+**And when you add to this file: prefer a check over a claim.** A pointer that
+can be verified ages gracefully. A sentence that asserts a fact does not.
+
+---
+
 ## /memory — Slash Command
 
 **Sequence (all first-read = MARKDOWN; JSONL is grep-only, never first-read):**

@@ -82,7 +82,9 @@ fun RouterPane(
             val checks = def.greenLight(ctx, app.resolveNpuModelPath())
             if (!checks.allGreen) {
                 fuseBlocked = "'${config.name}' blocked — red lights: " +
-                    checks.filter { !it.ok }.joinToString(", ") { it.label } +
+                    // Only blocking checks are reasons. Listing an advisory here
+                    // would name something that did not actually stop anything.
+                    checks.filter { !it.ok && !it.advisory }.joinToString(", ") { it.label } +
                     ". Check Monitor / console."
                 return
             }

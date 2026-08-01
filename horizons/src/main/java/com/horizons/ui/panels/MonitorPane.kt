@@ -428,8 +428,15 @@ fun MonitorPane(
                                     modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    if (green) "ALL GREEN" else
-                                        "${checks.count { !it.ok }} RED",
+                                    // Advisory checks never block, so they are never RED.
+                                    // They are counted separately as NOTE so a heavy
+                                    // model reads as "heads up" and not "broken".
+                                    if (green) {
+                                        val notes = checks.count { !it.ok && it.advisory }
+                                        if (notes > 0) "ALL GREEN · $notes NOTE" else "ALL GREEN"
+                                    } else {
+                                        "${checks.count { !it.ok && !it.advisory }} RED"
+                                    },
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
@@ -444,10 +451,21 @@ fun MonitorPane(
                             )
                             checks.forEach { check ->
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // ● satisfied · ▲ advisory (informational, never blocks)
+                                    // ○ blocking and unsatisfied — the only kind that holds
+                                    // the switch shut.
                                     Text(
-                                        if (check.ok) "●" else "○",
+                                        when {
+                                            check.ok -> "●"
+                                            check.advisory -> "▲"
+                                            else -> "○"
+                                        },
                                         fontSize = 10.sp,
-                                        color = if (check.ok) ReadyGreen else WarningAmber,
+                                        color = when {
+                                            check.ok -> ReadyGreen
+                                            check.advisory -> Accent
+                                            else -> WarningAmber
+                                        },
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(

@@ -230,12 +230,27 @@ private fun roadAndWeightLimit(context: Context, modelPath: String?): List<Asset
 }
 
 /**
- * Headroom reserved on top of the model's own bytes: runtime, KV cache, and
- * the rest of the app. A model that exactly fits available RAM does not run —
- * it gets the process killed. Conservative on purpose; a false RED costs the
- * operator one glance, a false GREEN costs a crash with no stack trace.
+ * Headroom reserved on top of the PRIMARY model's own bytes.
+ *
+ * This is not "a bit of slack for the runtime". The target deployment is the
+ * dual-agent pair, both resident at once:
+ *
+ *   - executive model — Qwen 3.5 9B Q4_0, ~5.4 GB
+ *   - query model     — Qwen 3.5 0.8B, always on, the one that decides whether
+ *                       the executive gets woken at all
+ *   - KV cache for both, the ggml/HTP runtime, and the app itself
+ *
+ * The operator's own figure: the device routinely has 10-12 GB free, and a cap
+ * anywhere under ~9-9.5 GB total is not feasible for this stack. 3.5 GB on top
+ * of a 5.4 GB primary lands at ~8.9 GB, which is inside that envelope with the
+ * companion model accounted for rather than ignored.
+ *
+ * An earlier value of 768 MB was set before the companion model was taken into
+ * account and was far too low — it would have flagged a perfectly runnable
+ * config as over-weight. Since this check is ADVISORY it could never have
+ * blocked anything, but a wrong number that merely misinforms is still wrong.
  */
-private const val RUNTIME_HEADROOM_BYTES = 768L * 1024L * 1024L
+private const val RUNTIME_HEADROOM_BYTES = 3584L * 1024L * 1024L
 
 class RuntimeDefStore(context: Context) {
 

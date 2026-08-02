@@ -97,7 +97,11 @@
 >      limit, and it exists specifically to stop OOM crashes. greenLight() NOW
 >      CHECKS THIS (arch + weight), and it is ADVISORY — it reports the real
 >      numbers (config bytes · free · device total) and never holds the switch
->      shut. Per the master doc the hard red banner gets stripped out; the Router
+>      shut. THERE IS NO SIZE CAP AND THE DAEMON DECIDES NOTHING AT LAUNCH
+>      (operator): the config is formatted INSIDE THE APP, and plenty of configs
+>      carry ZERO weights — cloud endpoint, terminal script, on-device CLI. A
+>      launch-time size constraint would be the daemon deciding something it
+>      cannot know. Per the master doc the hard red banner gets stripped out; the Router
 >      "just does it's going to try to connect whatever you put on there."
 >   4. THE COMMUNICATION (syntax AND handshake — ONE parameter, on purpose)
 >      "there is no need to separate the syntax and the endpoint — they both
@@ -164,7 +168,20 @@
 > THE APP ALREADY BUNDLES sherpa-onnx-1.13.2.aar (Kokoro TTS runs on it). So
 > Moonshine + Silero are MORE MODEL LOADS ON A RUNTIME THAT IS ALREADY THERE —
 > not a new integration, no NDK, no daemon.
-> BUT THE EXISTING VAD IS THE WRONG SHAPE: SileroVadDetector.kt bypasses the AAR
+> VAD MUST HANG OFF THE DEVICE ASSISTANT HOOKS (operator) so it can take the
+> GBOARD MICROPHONE. ALL THREE HOOKS ARE ALREADY DECLARED AND ACTIVE in
+> AndroidManifest.xml — nothing to wire:
+>   HorizonsVoiceInteractionService        -> replaces Google Assistant when picked
+>   HorizonsVoiceInteractionSessionService -> assist session, screenshot+view tree
+>   HorizonsRecognitionService             -> android.speech.RecognitionService
+>                                             = THE GBOARD MIC HOOK
+> Activate: Settings > Apps > Default apps > Digital assistant app > Horizons.
+> Only the BODY is missing — HorizonsRecognitionService records PCM -> WAV ->
+> llmRuntime.streamAudio(), which throws the audio away. Put Moonshine-tiny-on-ORT
+> behind that ONE service and Gboard, the assist gesture, and every app calling
+> SpeechRecognizer all get real transcription. The implementation of the VAD
+> itself is free choice — the constraint is that it feeds these hooks.
+> SEPARATELY, THE EXISTING VAD IS THE WRONG SHAPE: SileroVadDetector.kt bypasses the AAR
 > (raw ai.onnxruntime against assets/silero_vad.onnx), is v4 not v5, and RESETS
 > LSTM STATE EVERY CALL — its own comment says "stateless, single-chunk... 20-30ms
 > energy gate". An energy gate CANNOT implement "silence sends it": min_silence

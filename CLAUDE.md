@@ -90,9 +90,11 @@
 >    the Monitor today.
 >  - HomeGrid.kt:69 computes npuReady from startsWith("Adreno 830"), which the
 >    NO-BACKEND fallback string also matches. FROZEN — report, don't fix.
->  - Two launcher icons: .MainActivity AND .uilocal.LocalHomeActivity both carry
->    MAIN/LAUNCHER. They run different code; test the tile icon. Operator asked
->    about removing the second LAUNCHER entry — not yet done.
+>  - uilocal/ DELETED 2026-08-04, operator call. One launcher icon now. It was a
+>    session-16 scratch fork sold as crash-resistant; the operator tried it during
+>    a crash and it died identically, because both activities run the SAME
+>    HorizonsApplication.onCreate. Don't recreate it — a second Activity gives
+>    zero crash isolation. Real isolation is a separate process (:clifford).
 >
 > ### KNOWLEDGE — Drive is the source of truth
 > Use mcp__Google_Drive__* directly; the operator's material is all there.
@@ -201,9 +203,11 @@ defect. The operator **explicitly rejected** the Router-as-gatekeeper.
 
 - `HomeGrid.kt:69` reports NPU-ready for the *no-backend* fallback string.
   **FROZEN — report only.**
-- Two launcher icons (`.MainActivity` + `.uilocal.LocalHomeActivity`) run
-  different code; confusing during triage. Removing the second `LAUNCHER` entry
-  is a pending operator call.
+- ~~Two launcher icons~~ — **RESOLVED 2026-08-04.** `uilocal/` deleted entirely
+  (283 lines, zero dependents outside its own manifest entry). Its media status
+  row probed the never-bound `:8091`, and its stated value — a UI that couldn't
+  fail the same way — was disproved on device: it crashed identically, sharing
+  `HorizonsApplication.onCreate`.
 - `verbosity` has a Settings slider **nothing reads**; `debugLogLevel` likewise.
 
 ---
@@ -271,7 +275,7 @@ horizons/                        Android app
   core/tts/DaemonTtsClient.kt    media daemon client (TTS half, contract only)
   core/shell/DaemonLauncher.kt
   core/agent/AgentLoop.kt
-  uilocal/LocalHomeActivity.kt   local UI fork (session 16), additive
+  core/stt/MoonshineSttEngine.kt in-process STT on the sherpa AAR (2026-08-04)
 .github/workflows/build-apk.yml
 release/debug.keystore           committed by design
 ```

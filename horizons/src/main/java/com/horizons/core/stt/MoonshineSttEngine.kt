@@ -35,8 +35,17 @@ import java.io.File
  * AppStateStore under [KEY_MOONSHINE_DIR]; if unset, the candidate directories
  * below are searched in order, which mirrors greenLight()'s asset lookup.
  *
- * A Moonshine directory holds five files:
- *   preprocess.onnx  encode.onnx  uncached_decode.onnx  cached_decode.onnx  tokens.txt
+ * A Moonshine directory holds four ONNX graphs plus tokens.txt:
+ *   preprocess · encode · uncached_decode · cached_decode · tokens.txt
+ *
+ * Each graph resolves as <part>.onnx or <part>.int8.onnx, because the int8
+ * bundles (csukuangfj/sherpa-onnx-moonshine-base-en-int8) ship encode.int8.onnx
+ * while only preprocess.onnx and tokens.txt keep a single spelling.
+ *
+ * Note this is NOT the Optimum/transformers.js ONNX export, which ships
+ * encoder_model.onnx / decoder_model.onnx / tokenizer.json — that layout has no
+ * preprocess graph and a tokenizer JSON rather than tokens.txt, so it cannot be
+ * renamed into place.
  *
  * If they aren't all present the engine stays not-ready and reports which are
  * missing, rather than failing at transcribe() time with an empty string.
@@ -71,9 +80,23 @@ class MoonshineSttEngine(
         return candidateDirs().firstOrNull { missingFiles(it).isEmpty() }
     }
 
-    private fun missingFiles(dir: File): List<String> =
-        if (!dir.isDirectory) REQUIRED_FILES
-        else REQUIRED_FILES.filter { !File(dir, it).canRead() }
+    /**
+     * Resolve one model part. The int8 bundles ship encode.int8.onnx while the
+     * float ones ship encode.onnx, and only preprocess/tokens have a single
+     * spelling — so match on either rather than a fixed filename.
+     */
+    private fun partFile(dir: File, part: String): File? =
+        listOf("$part.onnx", "$part.int8.onnx", "$part.fp16.onnx")
+            .map { File(dir, it) }
+            .firstOrNull { it.canRead() }
+
+    /** Logical parts with no readable file, by name. Empty means loadable. */
+    private fun missingFiles(dir: File): List<String> {
+        if (!dir.isDirectory) return REQUIRED_PARTS + TOKENS_FILE
+        val missing = REQUIRED_PARTS.filter { partFile(dir, it) == null }.toMutableList()
+        if (!File(dir, TOKENS_FILE).canRead()) missing += TOKENS_FILE
+        return missing
+    }
 
     override fun init() {
         if (recognizer != null) return
@@ -89,12 +112,12 @@ class MoonshineSttEngine(
                 featConfig = FeatureConfig(sampleRate = 16000, featureDim = 80),
                 modelConfig = OfflineModelConfig(
                     moonshine = OfflineMoonshineModelConfig(
-                        preprocessor = File(dir, "preprocess.onnx").absolutePath,
-                        encoder = File(dir, "encode.onnx").absolutePath,
-                        uncachedDecoder = File(dir, "uncached_decode.onnx").absolutePath,
-                        cachedDecoder = File(dir, "cached_decode.onnx").absolutePath,
+                        preprocessor = partFile(dir, "preprocess")!!.absolutePath,
+                        encoder = partFile(dir, "encode")!!.absolutePath,
+                        uncachedDecoder = partFile(dir, "uncached_decode")!!.absolutePath,
+                        cachedDecoder = partFile(dir, "cached_decode")!!.absolutePath,
                     ),
-                    tokens = File(dir, "tokens.txt").absolutePath,
+                    tokens = File(dir, TOKENS_FILE).absolutePath,
                     modelType = "moonshine",
                     numThreads = 2,
                     debug = false,
@@ -150,12 +173,18 @@ class MoonshineSttEngine(
         /** AppStateStore key holding a user-pinned Moonshine model directory. */
         const val KEY_MOONSHINE_DIR = "stt.moonshine.dir"
 
-        val REQUIRED_FILES = listOf(
-            "preprocess.onnx",
-            "encode.onnx",
-            "uncached_decode.onnx",
-            "cached_decode.onnx",
-            "tokens.txt",
+        /**
+         * Model parts, by logical name. Each resolves to <part>.onnx or
+         * <part>.int8.onnx — the int8 bundles (sherpa-onnx-moonshine-*-int8)
+         * carry the suffix on everything except preprocess.
+         */
+        val REQUIRED_PARTS = listOf(
+            "preprocess",
+            "encode",
+            "uncached_decode",
+            "cached_decode",
         )
+
+        const val TOKENS_FILE = "tokens.txt"
     }
 }

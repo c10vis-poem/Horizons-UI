@@ -15,6 +15,23 @@
 > 2. "State of the code" below            — what EXISTS vs what is only DESCRIBED.
 > 3. "Open decisions" below               — do not invent answers to these.
 >
+> ### DO NOT TOUCH THE HOME SCREEN. DO NOT DELETE THE FALLBACK BRANCHES.
+> horizons/src/main/java/com/horizons/ui/HomeGrid.kt is OPERATOR-FROZEN at
+> 984b061 (blob 618cf4b6). No agent edits it for ANY reason — not a layout
+> tweak, not a "small" fix, not a build-breaking or CI-breaking fix — without
+> the operator's explicit go-ahead. If it is implicated in a failure: STOP,
+> REPORT, WAIT.
+>
+> The fallback branches are the operator's only insurance on two months of UI
+> work and are NEVER to be deleted, force-pushed, renamed, or "cleaned up":
+>   FROZEN-correct-home-screen-984b0610
+>   RELEASE-correct-home-screen-984b0610
+>   claude/homegrid-v5-SNAPSHOT-good-1837dc2
+>   claude/homegrid-v4-scratch
+>   tag debug-RELEASE-correct-home-screen-984b0610
+> Restore with: git checkout FROZEN-correct-home-screen-984b0610 -- \
+>   horizons/src/main/java/com/horizons/ui/HomeGrid.kt
+>
 > ### THE ROUTER IS NOT A GATE
 > Repeated by the operator ~10-15 times across sessions before it was ever
 > written down. TERMINAL defines the runtime package (a FILE) -> ROUTER loads
@@ -158,6 +175,15 @@ that drift, and mem0 needs a vector store anyway. Omni Route routes between
   `claude/homegrid-v5-SNAPSHOT-good-1837dc2`, `claude/homegrid-v4-scratch`.
   Verified intact 2026-08-04 — the blob is identical on `main`, on the frozen
   branch, and on the working branch.
+- **The icebox branches and tag are NEVER deleted, force-pushed, renamed or
+  tidied.** They are the only insurance on two months of UI work. This holds
+  even if they look stale, duplicated, or like leftover scratch — several of
+  them *are* duplicates, and that is the point. Also keep
+  `tag debug-RELEASE-correct-home-screen-984b0610`.
+  Restore the home screen with:
+  `git checkout FROZEN-correct-home-screen-984b0610 -- horizons/src/main/java/com/horizons/ui/HomeGrid.kt`
+- Note the two fonts `HomeGrid.kt` depends on travel with it — if you ever
+  restore it, confirm they are present too.
 - **Never claim a file was written, updated, or verified unless it was.** The
   operator was burned by exactly this. If CI has not built it, say "compiles:
   unknown". If it has not run on device, say so.

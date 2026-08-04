@@ -110,7 +110,8 @@ class ModelImportActivity : ComponentActivity() {
                     importFile(
                         uri, canonical,
                         destDir = filesDir,
-                        executable = canonical == com.horizons.core.shell.DaemonLauncher.ENGINE_BINARY,
+                        executable = canonical == com.horizons.core.shell.DaemonLauncher.ENGINE_BINARY ||
+                            canonical == "llama-server",
                         label = "Runtime component",
                     )
                 }
@@ -180,6 +181,7 @@ class ModelImportActivity : ComponentActivity() {
         // Tolerant match: handles download-dedupe suffixes ("ort_engine (1)"),
         // versioned QNN libs ("libQnnHtpV79Skel.so"), and case variations.
         if (lower.startsWith("ort_engine")) return true
+        if (lower.startsWith("llama-server") || lower.startsWith("llama_server")) return true
         if (lower.startsWith("libonnxruntime") && lower.endsWith(".so")) return true
         if (lower.startsWith("libqnn") && lower.endsWith(".so")) return true
         return false
@@ -190,6 +192,7 @@ class ModelImportActivity : ComponentActivity() {
         val lower = name.lowercase()
         return when {
             lower.startsWith("ort_engine") -> com.horizons.core.shell.DaemonLauncher.ENGINE_BINARY
+            lower.startsWith("llama-server") || lower.startsWith("llama_server") -> "llama-server"
             lower.startsWith("libonnxruntime") -> "libonnxruntime.so"
             lower.startsWith("libqnnhtpv79skel") -> "libQnnHtpV79Skel.so"
             lower.startsWith("libqnnhtp") -> "libQnnHtp.so"
@@ -222,6 +225,7 @@ class ModelImportActivity : ComponentActivity() {
         // Native daemon runtime components — CI build outputs from build-apk.yml.
         val RUNTIME_FILES = setOf(
             com.horizons.core.shell.DaemonLauncher.ENGINE_BINARY, // "ort_engine"
+            "llama-server",
             "libonnxruntime.so",
             "libQnnHtp.so",
             "libQnnSystem.so",

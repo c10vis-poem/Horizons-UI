@@ -102,6 +102,7 @@ class HorizonsApplication : Application() {
 
     // -- LLM runtimes -- daemon first, cloud fallback --
     @Volatile private var _npuClient: NpuClient? = null
+    @Volatile private var _npuEndpoint: Pair<Int, String>? = null
     val cloudRuntime: CloudLlmRuntime by lazy { CloudLlmRuntime(appState) }
 
     val llmRuntime: LlmRuntime get() {
@@ -113,7 +114,11 @@ class HorizonsApplication : Application() {
     val isNpuActive: Boolean get() = _npuClient != null
 
     private val _fallbackRuntime = object : LlmRuntime {
-        override val backendStatus = MutableStateFlow("Adreno 830 · no backend")
+        // Must NOT start with "Adreno 830" or "Hexagon HTP": the home grid treats
+        // those prefixes as "NPU ready", so the old string made the no-backend
+        // fallback light up green. Fixed here rather than in HomeGrid.kt, which is
+        // frozen at 984b061.
+        override val backendStatus = MutableStateFlow("no backend · idle")
         override fun stream(prompt: String) = flow<String> {
             emit("[No inference backend available — start the on-device daemon or add a cloud API key in Settings]")
         }
@@ -355,8 +360,26 @@ class HorizonsApplication : Application() {
         }
     }
 
-    fun activateNpuRuntime() {
-        if (_npuClient == null) _npuClient = NpuClient()
+    /**
+     * Point the NPU runtime at a daemon endpoint. Defaults reproduce the old
+     * ort_engine-on-:8080 behaviour, so callers that don't know a RuntimeDef
+     * (CliffordService's own watchdog relaunch) are unaffected.
+     *
+     * When the Router flips a config whose RuntimeDef names a different port —
+     * geniex on :18181, or anything the user defined in the Terminal — the
+     * client is rebuilt against that endpoint instead of a compile-time
+     * constant. Without this the UI could plate any runtime it liked and the
+     * chat pane would still be talking to :8080.
+     */
+    fun activateNpuRuntime(
+        port: Int = com.horizons.core.shell.DaemonLauncher.ENGINE_PORT,
+        healthPath: String = "/health",
+    ) {
+        val target = port to healthPath
+        if (_npuClient == null || _npuEndpoint != target) {
+            _npuClient = NpuClient(port, healthPath)
+            _npuEndpoint = target
+        }
     }
 
     /**

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.horizons.HorizonsApplication
+import com.horizons.core.shell.DaemonLauncher
 import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.RouterConfig
 import com.horizons.core.state.allGreen
@@ -89,7 +90,41 @@ fun RouterPane(
         }
         fuseBlocked = null
         app.routerConfigs.setStatus(config.id, ConfigStatus.RUNNING)
-        if (preWarm) app.llmRuntime.preWarm()
+
+        // Actually start the thing. Until now this function set a status label and
+        // stopped, so "RUNNING" meant nothing had been launched — the only daemon
+        // ever started was CliffordService's hardcoded ort_engine, regardless of
+        // which config was plated. Everything needed is already on the RuntimeDef;
+        // nothing consumed it.
+        //
+        // Configs with no matching def (cloud endpoints, PWA, terminal harnesses)
+        // have no local binary to launch and fall through untouched.
+        if (def != null) {
+            val args = def.argsTemplate
+                .replace("{model}", app.resolveNpuModelPath().orEmpty())
+                .replace("{port}", def.port.toString())
+                .trim()
+                .split(Regex("\\s+"))
+                .filter { it.isNotBlank() }
+
+            scope.launch {
+                val launcher = DaemonLauncher(ctx, def.binaryName)
+                if (!launcher.isRunning()) {
+                    launcher.launch(args).onFailure { e ->
+                        fuseBlocked = "'${config.name}' — ${def.binaryName} failed to start: " +
+                            "${e.message}. Check Monitor / console."
+                        app.routerConfigs.setStatus(config.id, ConfigStatus.READY)
+                        return@launch
+                    }
+                }
+                // Retarget the chat runtime at THIS config's endpoint, so a config
+                // running geniex on :18181 isn't answered by whatever sits on :8080.
+                app.activateNpuRuntime(def.port, def.healthPath)
+                if (preWarm) app.llmRuntime.preWarm()
+            }
+        } else if (preWarm) {
+            app.llmRuntime.preWarm()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {

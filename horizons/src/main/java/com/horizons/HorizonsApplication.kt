@@ -97,6 +97,14 @@ class HorizonsApplication : Application() {
     // -- STT via the media daemon (Whisper) -- never in-process; models run detached --
     val stt: DaemonSttClient by lazy { DaemonSttClient(appState) }
 
+    /**
+     * In-process STT on the sherpa AAR that already ships for Kokoro TTS. Tried
+     * before [stt], whose media daemon on :8091 nothing in this app binds.
+     */
+    val moonshineStt: com.horizons.core.stt.MoonshineSttEngine by lazy {
+        com.horizons.core.stt.MoonshineSttEngine(this, appState)
+    }
+
     // -- Pending screen capture (dock button -> stored here -> chat ask) --
     val pendingScreenJpeg = MutableStateFlow<ByteArray?>(null)
 
@@ -263,12 +271,19 @@ class HorizonsApplication : Application() {
     }
 
     /**
-     * Voice STT: PCM -> media daemon (Whisper), never in-process, model-independent.
-     * Falls back to the active LLM's audio path only if the media daemon is down
-     * and a model that accepts audio is loaded.
+     * Voice STT: our own transcription, model-independent.
+     *
+     * Order is in-process Moonshine, then the media daemon, then — only if both
+     * are unavailable — the active LLM's audio path. Moonshine goes first because
+     * the daemon leg targets 127.0.0.1:8091 and nothing in this app binds it, so
+     * that call always returned "" and every transcription silently became an LLM
+     * request. That looked like a model fault and wasn't one.
      */
     suspend fun transcribeAudio(pcm: ShortArray, sampleRate: Int): String {
-        // Media daemon (Whisper) first; returns "" if the daemon isn't reachable.
+        // In-process first — no socket, no daemon, works with the app alone.
+        val local = moonshineStt.transcribe(pcm, sampleRate)
+        if (local.isNotBlank()) return local
+        // Media daemon, for setups that actually run one.
         val text = stt.transcribe(pcm, sampleRate)
         if (text.isNotBlank()) return text
         // Fallback only if the media daemon is down and an audio-capable LLM is active.
@@ -349,6 +364,11 @@ class HorizonsApplication : Application() {
 
             // -- STT: probe the media daemon so stt.ready reflects connectivity --
             scope.launch { runCatching { stt.probe() } }
+
+            // Load Moonshine off the main thread. onCreate() must stay light — a
+            // synchronous disk-walking init here is what made the boot crash
+            // compound in the first place.
+            scope.launch(Dispatchers.IO) { runCatching { moonshineStt.init() } }
 
             scope.launch { ttsVoiceId.collect { id -> tts.voiceId = id; appState.put(AppStateStore.KEY_TTS_VOICE, id) } }
             scope.launch { ttsSpeed.collect  { sp -> tts.speed   = sp; appState.put(AppStateStore.KEY_TTS_SPEED, sp.toString()) } }

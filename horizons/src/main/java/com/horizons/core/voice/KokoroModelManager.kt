@@ -114,11 +114,18 @@ class KokoroModelManager(private val context: Context, private val scope: Corout
                 Log.i(TAG, "Kokoro model ready at $modelDir")
                 _state.value = KokoroSetupState.Ready
             } else {
+                // Partial/corrupt extraction — clear it so the NEXT launch re-downloads
+                // cleanly instead of retrying isComplete() against leftover debris forever.
+                File(context.filesDir, "sherpa_tts").deleteRecursively()
                 _state.value = KokoroSetupState.Error("Extraction incomplete — expected files missing")
             }
         } catch (e: Throwable) {
             Log.e(TAG, "Kokoro download/extract failed", e)
             tmpFile.delete()
+            // Same reasoning: an interrupted download/extract (network drop, OOM, crash
+            // mid-tar) leaves a partial sherpa_tts/ that will never satisfy isComplete(),
+            // so every future boot re-downloads 200MB and re-extracts on top of the debris.
+            File(context.filesDir, "sherpa_tts").deleteRecursively()
             _state.value = KokoroSetupState.Error(e.message ?: "Unknown error")
         }
     }

@@ -20,7 +20,17 @@
 > ### WHAT THIS IS
 > A manual, modular workbench, NOT a black box. Core law: "Daemons stay dumb,
 > the user is the loader" — boots EMPTY and stable; nothing runs until the user
-> flips a fuse. Seven tiles feed a center-hub Router.
+> says so. Seven tiles feed a center-hub Router.
+>
+> ### THE ROUTER IS NOT A GATE. READ wiki/ROUTER-MONITOR-TERMINAL-SPEC.md FIRST.
+> Operator-dictated 2026-08-04 and repeated ~10-15 times across sessions without
+> ever being written down. TERMINAL defines the package (a FILE) -> ROUTER loads
+> and preps it (CD changer = 6 model slots, display = live params, tape deck =
+> runtime files) -> MONITOR verifies the four boxes AND dispatches the run.
+> There is no flip-the-switch in the Router. "Fuse box", "10-amp fuse" and
+> "breaker" were the operator's METAPHORS to make the idea legible; prior
+> sessions compiled them into a literal state machine. The four failure classes
+> are real; the ceremony is not.
 >
 > AUTHORITY MODEL (operator, 2026-07-31) — the circuit is IN SERIES:
 >   Settings = supply (assets/keys). Can hand a config to the Router.
@@ -28,11 +38,14 @@
 >   Terminal = writes the fuse spec (parameters only). Never executes.
 >   Monitor  = THE SWITCH IN THE LOOP. Verifies wiring. Open/loose => no
 >              circuit, however perfect the fuse. Stores nothing, DISPATCHES.
->   Router   = fuse box + breaker. Carries current. Doesn't argue.
-> Validation must be LIVE at flip time (a series switch has no memory), but the
-> check belongs to the MONITOR. RouterPane.switchOn() currently re-implements it
-> instead of consulting it — that is the one real defect. The operator EXPLICITLY
-> REJECTED the Router as hardened gatekeeper; the gate is the Monitor's.
+>   Router   = THE LOAD BAY. Holds weights, params and runtime files; lets you
+>              cycle between up to 6 loaded runtimes. Preps, never runs.
+>              Doesn't argue, doesn't verify, doesn't refuse.
+> Validation is the MONITOR's, and so is the run — it checks the four boxes
+> against what the Router has loaded, then dispatches. RouterPane.switchOn()
+> both re-implements the check AND launches the daemon; per the 2026-08-04 spec
+> both belong to the Monitor. The operator has EXPLICITLY REJECTED the Router as
+> gatekeeper more than once. See wiki/ROUTER-MONITOR-TERMINAL-SPEC.md §0.
 >
 > ### THE CRASH (why this branch exists)
 > Symptom: crashes ~90s after landing, worse each launch, "still trying to
@@ -235,6 +248,14 @@ compile/                        dormant compile-pipeline domain (was models/ + s
   compile_qwen3_5_9b.py          fallback compile script (dormant, see wiki/COMPILE-PIPELINE.md)
   requirements-compile.txt       pip deps for the staged Colab compile
 wiki/
+  ROUTER-MONITOR-TERMINAL-SPEC.md  ** READ THIS BEFORE TOUCHING ANY TILE **
+                                  ADOPTED, operator-dictated 2026-08-04. Router is a
+                                  LOAD BAY, not a gate. Terminal defines -> Router
+                                  loads -> Monitor verifies AND dispatches. Stereo /
+                                  arcade-cabinet / matrix visual specs. Supersedes every
+                                  earlier "fuse box" description on conflict.
+  HOME-REDESIGN-SPEC.md          home screen redesign + wiki/home-redesign-img/ assets
+  MASTER-SESSION.md              older combined session log
   COMPILE-PIPELINE.md            dormant fallback pipeline (Single-Path Architecture,
                                   Size Envelope, Hexagon HTP Constraints, Job 8 command)
   GENIEX-DAEMON-PLAN.md          GenieX runtime plan + model/vision daemon split

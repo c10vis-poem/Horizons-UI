@@ -582,7 +582,7 @@ fun MonitorPane(
                                         modifier = Modifier.weight(1f),
                                     )
                                     Text(
-                                        check.detail.takeLast(28),
+                                        check.detail.let { d -> if (d.length > 40) "…${d.takeLast(38)}" else d },
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 8.sp,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
@@ -689,7 +689,7 @@ fun MonitorPane(
                     keyboardActions = KeyboardActions(onDone = {
                         val cmd = consoleInput.trim()
                         consoleOutput = when {
-                            cmd == "help" -> "commands: status, models, runtimes, configs, compat"
+                            cmd == "help" -> "commands: status, models, runtimes, configs, compat, manual"
                             cmd == "status" -> buildString {
                                 append("backend: $backendStatus\n")
                                 append("active model: ${activeModel?.substringAfterLast("/") ?: "none"}\n")
@@ -705,6 +705,10 @@ fun MonitorPane(
                                 else configs.joinToString("\n") { "${it.name} [${it.status.name}] - ${it.runtime.ifBlank { "no runtime" }}" }
                             cmd == "compat" -> "gguf->GenieX | onnx/bin->ort_engine | dlc/qnn->QNN | cloud->API key+endpoint"
                             cmd.startsWith("load ") -> "use Router to load configs — this is a read-only console"
+                            cmd == "manual" || cmd.startsWith("manual ") -> {
+                                val arg = cmd.removePrefix("manual").trim()
+                                com.horizons.core.shell.ManualStore.query(app, arg.ifEmpty { null })
+                            }
                             else -> "unknown: $cmd — type 'help'"
                         }
                         consoleInput = ""

@@ -2,137 +2,124 @@ package com.horizons.core.voice
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import com.horizons.core.state.AppStateStore
 import java.io.File
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 sealed class KokoroSetupState {
     object Idle : KokoroSetupState()
-    data class Downloading(val percent: Int, val totalMb: Float) : KokoroSetupState()
-    object Extracting : KokoroSetupState()
+    /** Resolved on disk; every required file is present. */
     object Ready : KokoroSetupState()
-    data class Error(val message: String) : KokoroSetupState()
+    /** A directory was searched but files are absent. [missing] names them. */
+    data class Missing(val missing: List<String>) : KokoroSetupState()
 }
 
 /**
- * Downloads and extracts the Kokoro multi-lang v1.0 model (~200 MB compressed).
- * Exposes [state] for UI progress.  Call [ensureReady] once at app start.
+ * Resolves the Kokoro multi-lang v1.0 TTS model from a device folder. It does not
+ * download anything.
+ *
+ * ## Why this no longer downloads
+ *
+ * This class used to pull a ~200 MB tar.bz2 from GitHub and extract it, and
+ * [ensureReady] was called unconditionally from `HorizonsApplication.onCreate()`.
+ * That put a 200 MB network fetch, a bzip2 decompress, and a full tar extract on
+ * the boot path of an app whose core law is "boots empty, boots stable" — and
+ * `SherpaOnnxTtsClient.init()` then loaded the ONNX in-process straight after.
+ * It is the largest single thing the app did at startup and a prime suspect for
+ * the unexplained ~90 s first crash.
+ *
+ * The download also contradicted the residency model: weights live in their own
+ * clean device folder and load by absolute path, drag-and-drop swappable, nothing
+ * large shipping or fetched by the APK. Storage cost is identical either way —
+ * the only thing downloading bought was a boot-time failure mode, plus partial
+ * extraction debris that made every subsequent boot re-download 200 MB on top of it.
+ *
+ * This mirrors [com.horizons.core.stt.MoonshineSttEngine]: the user is the loader,
+ * the app resolves what is already there and reports what is not.
+ *
+ * ## Model files
+ *
+ * A Kokoro directory holds `model.onnx`, `voices.bin`, `tokens.txt`, and the
+ * `espeak-ng-data/` directory. Fetch it once, by hand, from
+ * `k2-fsa/sherpa-onnx` releases (`kokoro-multi-lang-v1_0.tar.bz2`) or any copy,
+ * and unpack it into one of [candidateDirs] — or pin an explicit path under
+ * [KEY_KOKORO_DIR].
  */
-class KokoroModelManager(private val context: Context, private val scope: CoroutineScope) {
+class KokoroModelManager(
+    private val context: Context,
+    private val appState: AppStateStore? = null,
+) {
 
-    private val _state = MutableStateFlow<KokoroSetupState>(KokoroSetupState.Idle)
-    val state: StateFlow<KokoroSetupState> = _state.asStateFlow()
+    @Volatile
+    private var _state: KokoroSetupState = KokoroSetupState.Idle
+    val state: KokoroSetupState get() = _state
 
-    val modelDir: String
-        get() = File(context.filesDir, "sherpa_tts/kokoro-multi-lang-v1_0").absolutePath
+    /** Directories searched when the user hasn't pinned one explicitly. */
+    private fun candidateDirs(): List<File> = listOf(
+        File(context.filesDir, "sherpa_tts/kokoro-multi-lang-v1_0"),
+        File(context.filesDir, "kokoro"),
+        File("/storage/emulated/0/Download/kokoro-multi-lang-v1_0"),
+        File("/storage/emulated/0/Download/kokoro"),
+    )
 
-    fun ensureReady() {
-        val cur = _state.value
-        if (cur is KokoroSetupState.Ready || cur is KokoroSetupState.Downloading || cur is KokoroSetupState.Extracting) return
-        scope.launch(Dispatchers.IO) { checkOrDownload() }
-    }
-
-    private fun isComplete(): Boolean {
-        val dir = File(modelDir)
-        return dir.isDirectory
-            && File(dir, "model.onnx").exists()
-            && File(dir, "voices.bin").exists()
-            && File(dir, "tokens.txt").exists()
-            && File(dir, "espeak-ng-data").isDirectory
-    }
-
-    private fun checkOrDownload() {
-        if (isComplete()) { _state.value = KokoroSetupState.Ready; return }
-        downloadAndExtract()
-    }
-
-    private fun downloadAndExtract() {
-        val tmpFile = File(context.cacheDir, "kokoro.tar.bz2")
-        try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.MINUTES)
-                .build()
-
-            _state.value = KokoroSetupState.Downloading(0, 0f)
-            val request = Request.Builder().url(MODEL_URL).build()
-
-            client.newCall(request).execute().use { resp ->
-                if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-                val body = resp.body ?: throw IOException("empty body")
-                val totalBytes = body.contentLength()
-                val totalMb = if (totalBytes > 0) totalBytes / (1024f * 1024f) else 0f
-                var downloaded = 0L
-
-                tmpFile.outputStream().buffered().use { out ->
-                    body.byteStream().use { src ->
-                        val buf = ByteArray(65_536)
-                        var n: Int
-                        while (src.read(buf).also { n = it } != -1) {
-                            out.write(buf, 0, n)
-                            downloaded += n
-                            if (totalBytes > 0) {
-                                _state.value = KokoroSetupState.Downloading(
-                                    percent = (downloaded * 100L / totalBytes).toInt(),
-                                    totalMb = totalMb,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            _state.value = KokoroSetupState.Extracting
-            val destDir = File(context.filesDir, "sherpa_tts")
-            destDir.mkdirs()
-            Log.i(TAG, "Extracting Kokoro model archive…")
-
-            BZip2CompressorInputStream(tmpFile.inputStream().buffered()).use { bz ->
-                TarArchiveInputStream(bz).use { tar ->
-                    var entry = tar.nextEntry
-                    while (entry != null) {
-                        val dest = File(destDir, entry.name)
-                        if (entry.isDirectory) dest.mkdirs()
-                        else { dest.parentFile?.mkdirs(); dest.outputStream().use { tar.copyTo(it) } }
-                        entry = tar.nextEntry
-                    }
-                }
-            }
-            tmpFile.delete()
-
-            if (isComplete()) {
-                Log.i(TAG, "Kokoro model ready at $modelDir")
-                _state.value = KokoroSetupState.Ready
-            } else {
-                // Partial/corrupt extraction — clear it so the NEXT launch re-downloads
-                // cleanly instead of retrying isComplete() against leftover debris forever.
-                File(context.filesDir, "sherpa_tts").deleteRecursively()
-                _state.value = KokoroSetupState.Error("Extraction incomplete — expected files missing")
-            }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Kokoro download/extract failed", e)
-            tmpFile.delete()
-            // Same reasoning: an interrupted download/extract (network drop, OOM, crash
-            // mid-tar) leaves a partial sherpa_tts/ that will never satisfy isComplete(),
-            // so every future boot re-downloads 200MB and re-extracts on top of the debris.
-            File(context.filesDir, "sherpa_tts").deleteRecursively()
-            _state.value = KokoroSetupState.Error(e.message ?: "Unknown error")
+    /** Required entries. `espeak-ng-data` is a directory; the rest are files. */
+    private fun missingFiles(dir: File): List<String> {
+        if (!dir.isDirectory) return REQUIRED
+        return REQUIRED.filterNot { name ->
+            val f = File(dir, name)
+            if (name == "espeak-ng-data") f.isDirectory else f.isFile
         }
+    }
+
+    /** The directory holding a complete Kokoro model, or null if none qualifies. */
+    fun resolveModelDir(): File? {
+        appState?.get(KEY_KOKORO_DIR)?.takeIf { it.isNotBlank() }?.let { pinned ->
+            val dir = File(pinned)
+            return if (missingFiles(dir).isEmpty()) dir else null
+        }
+        return candidateDirs().firstOrNull { missingFiles(it).isEmpty() }
+    }
+
+    /**
+     * Absolute path handed to `SherpaOnnxTtsClient`. Falls back to the first
+     * candidate so construction never fails; [state] is the source of truth for
+     * whether anything is actually there.
+     */
+    val modelDir: String
+        get() = (resolveModelDir() ?: candidateDirs().first()).absolutePath
+
+    /**
+     * Cheap filesystem check — no network, no extraction. Safe to call at boot,
+     * though callers should still keep it off the main thread out of habit.
+     * Replaces the old `ensureReady()`, which downloaded.
+     */
+    fun refresh(): KokoroSetupState {
+        val dir = resolveModelDir()
+        _state = if (dir != null) {
+            Log.i(TAG, "Kokoro model resolved at ${dir.absolutePath}")
+            KokoroSetupState.Ready
+        } else {
+            val probed = appState?.get(KEY_KOKORO_DIR)?.takeIf { it.isNotBlank() }
+                ?.let { File(it) } ?: candidateDirs().first()
+            val missing = missingFiles(probed)
+            Log.i(TAG, "Kokoro model not present; missing in ${probed.absolutePath}: $missing")
+            KokoroSetupState.Missing(missing)
+        }
+        return _state
     }
 
     companion object {
         const val TAG = "KokoroModelManager"
-        const val MODEL_URL =
+
+        /** Pin an explicit Kokoro directory. */
+        const val KEY_KOKORO_DIR = "tts.kokoro_dir"
+
+        val REQUIRED = listOf("model.onnx", "voices.bin", "tokens.txt", "espeak-ng-data")
+
+        /**
+         * Where to get the model by hand. Recorded, not fetched — the app does not
+         * download weights.
+         */
+        const val MODEL_SOURCE_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
     }
 }

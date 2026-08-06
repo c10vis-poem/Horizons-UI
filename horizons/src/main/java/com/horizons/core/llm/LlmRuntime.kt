@@ -15,7 +15,18 @@ interface LlmRuntime {
 
     /**
      * Human-readable backend identity for the Models / Chat panes.
-     * UI treats `startsWith("Adreno 830")` and `startsWith("Hexagon HTP")` as "ready".
+     *
+     * Consumers match on SUBSTRINGS, not a prefix: `contains("no backend")`,
+     * `contains("Cloud")`, and `contains("Hexagon") || contains("NPU")` — see
+     * ChatPane, RouterPane and MonitorPane. Keep those tokens intact when
+     * changing a status string.
+     *
+     * This comment previously claimed the UI treated `startsWith("Adreno 830")`
+     * as "ready". No code has ever done that in this tree, and `HomeGrid.kt`
+     * does not read `backendStatus` at all — but the claim was copied into
+     * CLAUDE.md, AGENT-BRIEF and CRASH-ANALYSIS as a live bug in a frozen file,
+     * where it sat unfixable-by-decree for several sessions. It was a phantom.
+     * Corrected here so it stops being re-derived.
      */
     val backendStatus: StateFlow<String>
         get() = idleStatus

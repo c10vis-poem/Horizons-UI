@@ -77,8 +77,8 @@ class HorizonsApplication : Application() {
     private val _engineError = MutableStateFlow<String?>(null)
     val engineError: StateFlow<String?> = _engineError.asStateFlow()
 
-    // -- Kokoro model manager -- downloads & extracts the TTS model on first run --
-    val kokoroManager: KokoroModelManager by lazy { KokoroModelManager(this, scope) }
+    // -- Kokoro model resolver -- finds the TTS model in a device folder. Never downloads. --
+    val kokoroManager: KokoroModelManager by lazy { KokoroModelManager(this, appState) }
 
     // -- Sherpa-ONNX TTS (Kokoro voices, no Android TextToSpeech broker) --
     val tts: SherpaOnnxTtsClient by lazy { SherpaOnnxTtsClient(kokoroManager.modelDir) }
@@ -339,26 +339,37 @@ class HorizonsApplication : Application() {
                 com.horizons.core.diag.Breadcrumb.drop("cloud_refresh_failed: ${e.javaClass.simpleName}: ${e.message}")
             }
 
-            try {
-                kokoroManager.ensureReady()
-                com.horizons.core.diag.Breadcrumb.drop("kokoro_ensure_ready_called")
-            } catch (e: Throwable) {
-                com.horizons.core.diag.Breadcrumb.drop("kokoro_ensure_ready_failed: ${e.javaClass.simpleName}: ${e.message}")
-            }
-
-            scope.launch {
-                kokoroManager.state.collect { state ->
-                    if (state is KokoroSetupState.Ready) {
-                        com.horizons.core.diag.Breadcrumb.drop("kokoro_state_ready")
+            // -- TTS: resolve Kokoro from a device folder, never download. --
+            //
+            // This used to call kokoroManager.ensureReady(), which pulled ~200 MB
+            // from GitHub, bzip2-decompressed it, untarred it, and only then let
+            // tts.init() load the ONNX in-process. All of that ran on every boot
+            // of an app whose core law is "boots empty, boots stable", and it is a
+            // prime suspect for the unexplained ~90 s first crash.
+            //
+            // Now: a filesystem check on the IO dispatcher. If the model is there
+            // the TTS engine initialises; if it is not, the app boots clean and
+            // says which files are missing. No model is the normal boot state.
+            scope.launch(Dispatchers.IO) {
+                val state = runCatching { kokoroManager.refresh() }.getOrElse { e ->
+                    com.horizons.core.diag.Breadcrumb.drop("kokoro_refresh_failed: ${e.javaClass.simpleName}: ${e.message}")
+                    return@launch
+                }
+                when (state) {
+                    is KokoroSetupState.Ready -> {
+                        com.horizons.core.diag.Breadcrumb.drop("kokoro_resolved")
                         try {
                             tts.voiceId = ttsVoiceId.value
                             tts.speed   = ttsSpeed.value
-                            withContext(Dispatchers.IO) { tts.init() }
+                            tts.init()
                             com.horizons.core.diag.Breadcrumb.drop("tts_inited")
                         } catch (e: Throwable) {
                             com.horizons.core.diag.Breadcrumb.drop("tts_init_failed: ${e.javaClass.simpleName}: ${e.message}")
                         }
                     }
+                    is KokoroSetupState.Missing ->
+                        com.horizons.core.diag.Breadcrumb.drop("kokoro_absent: missing=${state.missing.joinToString(",")}")
+                    KokoroSetupState.Idle -> Unit
                 }
             }
 

@@ -42,6 +42,18 @@ jobs:
           curl -fL -o horizons/libs/sherpa-onnx-1.13.2.aar \
             https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.2/sherpa-onnx-1.13.2.aar
 
+      # Silero VAD — ~2 MB, and without it VadFactory silently degrades to RMS on
+      # every device. It prefers SileroVadDetector when assets/silero_vad.onnx is
+      # present and falls back otherwise, so a missing asset is not a build error,
+      # it is a quiet downgrade nobody notices. Small enough to ship in the APK;
+      # unlike the STT/TTS weights this is not a user-supplied model.
+      - name: Download Silero VAD model
+        run: |
+          mkdir -p horizons/src/main/assets
+          curl -fL -o horizons/src/main/assets/silero_vad.onnx \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
+          ls -l horizons/src/main/assets/silero_vad.onnx
+
       - name: Cache NDK + ORT
         uses: actions/cache@v4
         with:

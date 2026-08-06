@@ -214,7 +214,7 @@
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
 
-            <!-- Handle file open from file managers -->
+            <!-- Handle file open from file managers — models + runtime binaries -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -228,14 +228,15 @@
                 <data android:pathPattern=".*\\.dlc" />
                 <data android:pathPattern=".*\\.pte" />
                 <data android:pathPattern=".*\\.qnn" />
+                <data android:pathPattern=".*\\.so" />
                 <data android:mimeType="*/*" />
             </intent-filter>
 
-            <!-- Handle SEND intents (share model file to Horizons) -->
+            <!-- Handle SEND intents — any file type so binaries and .so files share cleanly -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
 

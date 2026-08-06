@@ -176,14 +176,37 @@ class ModelImportActivity : ComponentActivity() {
         return MODEL_EXTENSIONS.any { lower.endsWith(it) }
     }
 
+    /**
+     * Is this a runtime asset the operator is importing?
+     *
+     * **Any shared object counts, and so does any executable-looking file.**
+     * This deliberately does NOT check the name against a known list.
+     *
+     * It used to: only `libonnxruntime*.so` and `libqnn*.so` were accepted, and
+     * everything else was refused with "Unsupported file type". That rejected
+     * `libggml-hexagon.so` and `libggml-htp-v79.so` — the GGML Hexagon backend,
+     * i.e. exactly the libraries that give llama.cpp its NPU path — along with
+     * every sherpa lib, every custom build, and anything the list had not been
+     * updated for.
+     *
+     * That is the Rule 7a failure that wrecked the last build, relocated from
+     * the Router into the importer: a hardcoded allowlist red-flagging any
+     * asset it does not recognise, which "broke the ability to run custom
+     * binaries, fine-tuned weights, or build-in-place assets." An importer has
+     * no business deciding a `.so` is illegitimate. The user is the loader; the
+     * Monitor reports what a runtime is missing. Refusing the file at the door
+     * means it can never even be reported on.
+     */
     private fun isRuntimeFile(name: String): Boolean {
         val lower = name.lowercase()
-        // Tolerant match: handles download-dedupe suffixes ("ort_engine (1)"),
-        // versioned QNN libs ("libQnnHtpV79Skel.so"), and case variations.
+        // Any shared object, however named or versioned (libfoo.so.1.2.3).
+        if (lower.endsWith(".so") || lower.contains(".so.")) return true
+        // Known daemon binaries, tolerant of Android's "(1)" dedupe suffixes.
         if (lower.startsWith("ort_engine")) return true
         if (lower.startsWith("llama-server") || lower.startsWith("llama_server")) return true
-        if (lower.startsWith("libonnxruntime") && lower.endsWith(".so")) return true
-        if (lower.startsWith("libqnn") && lower.endsWith(".so")) return true
+        if (lower.startsWith("geniex")) return true
+        // Extensionless files are how native binaries usually arrive.
+        if (!lower.contains('.')) return true
         return false
     }
 
@@ -197,7 +220,10 @@ class ModelImportActivity : ComponentActivity() {
             lower.startsWith("libqnnhtpv79skel") -> "libQnnHtpV79Skel.so"
             lower.startsWith("libqnnhtp") -> "libQnnHtp.so"
             lower.startsWith("libqnnsystem") -> "libQnnSystem.so"
-            else -> name
+            // Everything else keeps the name it arrived with, minus Android's
+            // "(1)" download-dedupe suffix — a runtime that looks for
+            // libggml-hexagon.so will not find "libggml-hexagon (1).so".
+            else -> name.replace(Regex("""\s*\(\d+\)(?=\.|$)"""), "")
         }
     }
 

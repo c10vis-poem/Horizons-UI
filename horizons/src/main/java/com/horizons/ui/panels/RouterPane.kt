@@ -31,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,10 +43,8 @@ import androidx.compose.ui.unit.sp
 import com.horizons.HorizonsApplication
 import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.RouterConfig
-import com.horizons.core.state.greenLight
 import com.horizons.ui.CircuitTraceBackground
 import com.horizons.ui.theme.HorizonsColors
-import kotlinx.coroutines.launch
 
 private val Accent = HorizonsColors.TileRouter
 private val ReadyGreen = Color(0xFF4CAF50)
@@ -60,7 +57,6 @@ fun RouterPane(
 ) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as HorizonsApplication
-    val scope = rememberCoroutineScope()
     val configs by app.routerConfigs.configs.collectAsState()
     val backendStatus by app.llmRuntime.backendStatus.collectAsState()
 
@@ -71,58 +67,12 @@ fun RouterPane(
 
     var showNewConfig by remember { mutableStateOf(false) }
 
-    /**
-     * What the red lights said at the last flip. REPORTED, never enforced —
-     * the circuit is always attempted. Null once a flip reports all-green.
-     */
-    var lastFlipReport by remember { mutableStateOf<String?>(null) }
-
-    /**
-     * Close the circuit.
-     *
-     * The Router carries current and does not argue. It consults the Monitor's
-     * [greenLight] and surfaces whatever is red, then **attempts the flip
-     * anyway**. If the assets satisfy the amperage the engine fires; if they do
-     * not, it fails naturally — a circuit that did not energise, not an
-     * application refusing.
-     *
-     * This replaces a hard gate that returned early and threw a red
-     * `⚡ FUSE BOX` banner. That behaviour was the canonical Rule 7a violation:
-     * a behavioural metaphor ("10-amp fuse") compiled into enforcement code. It
-     * broke custom binaries, fine-tuned weights and build-in-place assets,
-     * because anything the checklist did not recognise was refused outright.
-     * The operator rejected it explicitly — *"I don't like the hardened
-     * gatekeeper aspect… it's just another thing that can break"* — and asked
-     * that a mismatch *"fail to bridge the connection naturally, without the app
-     * itself throwing an artificial crash or block."*
-     *
-     * Two changes, both required for the circuit to behave:
-     *
-     * 1. **No early return.** Red lights are reported; the flip still happens.
-     * 2. **No bypass.** The old `if (def != null)` meant a config with no
-     *    matching `RuntimeDef` — cloud endpoint, PWA, terminal harness — skipped
-     *    the Monitor entirely and got no report at all. Every config now reports;
-     *    a config with no local binary simply has nothing to check, which is a
-     *    valid result rather than a reason to skip the gate.
-     */
-    fun switchOn(config: com.horizons.core.state.RouterConfig, preWarm: Boolean = false) {
-        val def = app.runtimeDefs.defs.value.firstOrNull { it.name == config.runtime }
-        val checks = def?.greenLight(ctx, app.resolveNpuModelPath()).orEmpty()
-        val red = checks.filterNot { it.ok }
-
-        lastFlipReport = when {
-            def == null ->
-                "'${config.name}' — no local runtime definition, nothing to verify. " +
-                    "Closing the circuit."
-            red.isEmpty() -> null
-            else ->
-                "'${config.name}' — ${red.size} red: " +
-                    red.joinToString(", ") { it.label } +
-                    ". Attempting anyway; see Monitor / console."
-        }
-
+    // The Router is a load bay, not a gate — see wiki/ROUTER-MONITOR-TERMINAL-SPEC.md
+    // §0. It holds what's loaded and lets the operator pick which one is current.
+    // It does not verify the four boxes and it does not launch anything; checking
+    // and dispatching both belong to the Monitor.
+    fun loadConfig(config: com.horizons.core.state.RouterConfig) {
         app.routerConfigs.setStatus(config.id, ConfigStatus.RUNNING)
-        if (preWarm) app.llmRuntime.preWarm()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -211,29 +161,10 @@ fun RouterPane(
                 }
             }
 
-            // Informational readout of the last flip. Amber, not red: nothing was
-            // refused. The circuit was attempted either way — this only says what
-            // the Monitor saw on the way through.
-            lastFlipReport?.let { msg ->
-                Surface(
-                    color = Color(0xFF2A2410),
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        "◈ FLIP: $msg",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
-                        color = Color(0xFFE8A838),
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
-            }
-
             readyConfigs.forEach { config ->
                 MealCard(
                     config = config,
-                    onRun = { switchOn(config, preWarm = true) },
+                    onRun = { loadConfig(config) },
                     onSleep = { app.routerConfigs.setStatus(config.id, ConfigStatus.SLEEPING) },
                     onArchive = { app.routerConfigs.setStatus(config.id, ConfigStatus.ARCHIVED) },
                     onDelete = { app.routerConfigs.remove(config.id) },
@@ -248,7 +179,7 @@ fun RouterPane(
                 sleepingConfigs.forEach { config ->
                     MealCard(
                         config = config,
-                        onRun = { switchOn(config) },
+                        onRun = { loadConfig(config) },
                         onSleep = null,
                         onArchive = { app.routerConfigs.setStatus(config.id, ConfigStatus.ARCHIVED) },
                         onDelete = { app.routerConfigs.remove(config.id) },
@@ -340,7 +271,7 @@ private fun MealCard(
                 )
                 StatusPill(
                     text = when {
-                        isRunning -> "RUNNING"
+                        isRunning -> "LOADED"
                         isSleeping -> "ON DECK"
                         config.isReady -> "READY"
                         else -> "INCOMPLETE"
@@ -380,7 +311,7 @@ private fun MealCard(
                             contentColor = ReadyGreen,
                         ),
                     ) {
-                        Text("START", fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                        Text("LOAD", fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                     }
                 }
                 if (onSleep != null && !isSleeping) {

@@ -43,14 +43,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.rememberCoroutineScope
 import com.horizons.HorizonsApplication
 import com.horizons.ModelImportActivity
+import com.horizons.core.shell.DaemonLauncher
 import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.allGreen
 import com.horizons.core.state.greenLight
 import com.horizons.ui.OscilloscopeBackground
 import com.horizons.ui.browser.BrowserPane
 import com.horizons.ui.theme.HorizonsColors
+import kotlinx.coroutines.launch
 import java.io.File
 
 private val Accent = HorizonsColors.TileMonitor
@@ -75,9 +78,39 @@ fun MonitorPane(
 ) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as HorizonsApplication
+    val scope = rememberCoroutineScope()
     val backendStatus by app.llmRuntime.backendStatus.collectAsState()
     val configs by app.routerConfigs.configs.collectAsState()
+    val runtimeDefs by app.runtimeDefs.defs.collectAsState()
     val clipboardManager = LocalClipboardManager.current
+
+    // The Monitor is the dispatch point — see wiki/ROUTER-MONITOR-TERMINAL-SPEC.md
+    // §0/§3. It checks the four boxes against whatever the Router currently has
+    // loaded and, only if every box is green, actually starts it. The Router
+    // itself never launches anything; it only holds and selects.
+    var dispatchError by remember { mutableStateOf<String?>(null) }
+    fun dispatch(config: com.horizons.core.state.RouterConfig, def: com.horizons.core.state.RuntimeDef) {
+        val args = def.argsTemplate
+            .replace("{model}", app.resolveNpuModelPath().orEmpty())
+            .replace("{port}", def.port.toString())
+            .trim()
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+        scope.launch {
+            val launcher = DaemonLauncher(ctx, def.binaryName)
+            if (!launcher.isRunning()) {
+                launcher.launch(args).onFailure { e ->
+                    dispatchError = "'${config.name}' — ${def.binaryName} failed to start: ${e.message}"
+                    return@launch
+                }
+            }
+            dispatchError = null
+            // Retarget the chat runtime at THIS config's endpoint, so a config
+            // running geniex on :18181 isn't answered by whatever sits on :8080.
+            app.activateNpuRuntime(def.port, def.healthPath)
+            app.llmRuntime.preWarm()
+        }
+    }
 
     val modelsDir = File(app.filesDir, "models")
     val downloadDir = File(
@@ -266,6 +299,96 @@ fun MonitorPane(
 
                 HorizontalDivider(color = Accent.copy(alpha = 0.2f))
 
+                // ── Loaded in Router — Dispatch ─────────────────────────────
+                // Per spec: the Router only loads/holds/selects. This is the
+                // Monitor checking the four boxes against what's loaded and
+                // actually running it — the one place in the app that does.
+                val loadedConfigs = configs.filter { it.status == ConfigStatus.RUNNING }
+                if (loadedConfigs.isNotEmpty()) {
+                    Text(
+                        "Loaded in Router",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Accent,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    dispatchError?.let { msg ->
+                        Surface(
+                            color = ErrorRed.copy(alpha = 0.12f),
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                msg,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = ErrorRed,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+                    loadedConfigs.forEach { config ->
+                        val def = runtimeDefs.firstOrNull { it.name == config.runtime }
+                        val checks = remember(config.id, def?.id) {
+                            def?.greenLight(ctx, app.resolveNpuModelPath())
+                        }
+                        val green = checks?.allGreen == true
+                        Surface(
+                            color = HorizonsColors.Surface,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        config.name,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = Accent,
+                                    )
+                                    Text(
+                                        when {
+                                            def == null -> "no local binary — cloud/PWA/terminal"
+                                            green -> "ALL GREEN"
+                                            else -> "${checks!!.count { !it.ok }} RED"
+                                        },
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = if (def == null || green) ReadyGreen else WarningAmber,
+                                    )
+                                }
+                                if (def != null && green) {
+                                    Text(
+                                        "[ RUN ]",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = ReadyGreen,
+                                        modifier = Modifier
+                                            .padding(top = 4.dp)
+                                            .clickable { dispatch(config, def) }
+                                            .padding(vertical = 2.dp),
+                                    )
+                                } else if (def != null) {
+                                    Text(
+                                        "fix the red lights in Runtime Definitions below before this can run",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 9.sp,
+                                        color = WarningAmber.copy(alpha = 0.6f),
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    HorizontalDivider(color = Accent.copy(alpha = 0.2f))
+                }
+
                 // ── Model Library ───────────────────────────────────────────
                 Text(
                     "Model Library",
@@ -396,7 +519,7 @@ fun MonitorPane(
                 HorizontalDivider(color = Accent.copy(alpha = 0.2f))
 
                 // ── Runtime Definitions — shipped from Terminal, checked here,
-                //    handed to the Router (the fuse box) only when all green ──
+                //    handed to the Router (the load bay) only when all green ──
                 Text(
                     "Runtime Definitions",
                     style = MaterialTheme.typography.titleMedium,
@@ -404,7 +527,6 @@ fun MonitorPane(
                     fontFamily = FontFamily.Monospace,
                 )
 
-                val runtimeDefs by app.runtimeDefs.defs.collectAsState()
                 var handedOff by remember { mutableStateOf<String?>(null) }
 
                 runtimeDefs.forEach { def ->
@@ -493,7 +615,7 @@ fun MonitorPane(
                                 )
                             } else {
                                 Text(
-                                    "fix the red lights before this can reach the fuse box",
+                                    "fix the red lights before this can reach the Router",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 9.sp,
                                     color = WarningAmber.copy(alpha = 0.6f),

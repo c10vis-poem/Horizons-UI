@@ -96,14 +96,52 @@
 > stays in-APK for coordination but must NOT own OOM detection.
 >
 > ### AUTHORITY MODEL — series circuit
-> Settings supplies (no authority to run) · Terminal forges parameters only,
-> never executes · MONITOR is the switch, verifies LIVE at flip time, stores
-> nothing, dispatches · Router is fuse box + breaker, carries current,
-> DOESN'T ARGUE · Archives stores verified profiles, recovery restores here.
+> Settings supplies (no authority to run) · Terminal forges parameters AND
+> now also configures models, fine-tunes, Termux-executes, and hosts an
+> on-device agent (operator 2026-08-06 — "defines-only" is superseded) ·
+> MONITOR is the switch, verifies LIVE at flip time, stores nothing,
+> dispatches · Router is fuse box + breaker, carries current, DOESN'T ARGUE
+> · Archives stores verified profiles, recovery restores here.
 > The Router NEVER says no. A failed flip is a circuit that didn't energise,
-> not an app throwing a wall. The operator EXPLICITLY REJECTED the hardened
-> gatekeeper. Rule 7a: behavioural metaphors are NEVER compiled. Rule 7b:
-> the supplied visual references ARE literal build specs.
+> not an app throwing a wall. If the Router is full, the item BOUNCES back
+> to its origin tile + GOAT face (operator 2026-08-06). Rule 7a: behavioural
+> metaphors are NEVER compiled. Rule 7b: the supplied visual references ARE
+> literal build specs.
+>
+> ### SPEC EXPANSION 2026-08-06 (this session)
+> Canon now includes NEW cross-tile doc: canon/horizons-ui/UX-RULES.md.
+> Router / Monitor / Terminal locked specs materially extended: Router gets
+> animated CD tray + tap-a-disc fine-tune popup + dual-cassette Browse/Load
+> role split + execution-mode swap (double-agent / single / MoA / cloud /
+> terminal-agent) + STT tuning on tuner deck + cross-tile pathways +
+> overflow-bounce + per-item hotkey. Terminal gets CRT-oscilloscope panel +
+> Termux RUN_COMMAND_SERVICE access + describe→draft→confirm→run→auto-fix
+> agent pattern (LLM-Hub reference) + port-over to Router when idle + live
+> chaptered in-app user manual + provider picker. Monitor gets zoom + inset
+> cropping. New standing rules: NO TYPING outside Terminal/browser;
+> long-press → plain-language help popup; YOUR-FORK-FIRST for any asset
+> that has a Mer0vin8ian/c10vis-poem copy (mapping table in
+> canon/MASTER-BUILD-BLUEPRINT.md §14.5). Provider picker extends beyond
+> OpenRouter to OpenAI / Anthropic / SambaNova / custom (§14.6).
+> Executions model designated = Mer0vin8ian/Qwen3.5-0.8B — QAIRT precompiled
+> from Qualcomm, ships as GitHub release-assets JSON, ONLY TERMUX CAN UNPACK
+> IT. That makes Terminal Termux integration a HARD BLOCKER for executions
+> model loading, not a nice-to-have. On-device 1.21 GB Qwen3.5-2B GGUF is a
+> DIFFERENT model — don't conflate. Query-side pairing open. Voice stack
+> UNCHANGED — sherpa-onnx stays; on-device failure is suspected Android
+> accessibility issue, not stack choice (§8.3). Old duplicate launcher
+> .uilocal.LocalHomeActivity → REMOVE; .MainActivity becomes real
+> VoiceInteractionService.
+>
+> ### LEADING SUSPECT for "app can't find backend"
+> SAF picker scope. Operator's GenieX SDK + Qwen 3.5-9B GGUF sit in
+> /storage/emulated/0/LeGRAND_REPOSITORY/{MODELS,HARNESS}/ — NON-HIDDEN
+> internal storage. If Horizons only reads context.filesDir and never
+> launches ACTION_OPEN_DOCUMENT / ACTION_OPEN_DOCUMENT_TREE, those files
+> are structurally invisible regardless of what the daemon does. Grep for
+> ACTION_OPEN_DOCUMENT, ACTION_OPEN_DOCUMENT_TREE,
+> ContentResolver.openInputStream, filesDir. This is the highest-value
+> single check for the current failure — preempts the daemon-suicide theory.
 >
 > Use /memory to reload. HF_TOKEN / QAI_HUB_API_TOKEN from environment.
 > Never hardcode them.
@@ -259,7 +297,59 @@ abstract refactor; they are the tuner deck's controls.
   permissions, file search, UI. The NPU manager stays in-APK for coordination but must
   **not** own OOM detection.
 
+### Spec expansion 2026-08-06 (this session)
+
+Operator ran a full briefing pass; the vault got a substantial update.
+Files touched in `c10vis-poem/OBSIDIAN-Master_Wiki`:
+
+- **NEW:** `canon/horizons-ui/UX-RULES.md` — cross-tile UX rules (no typing,
+  long-press help, zoom, inset-cropping, cross-tile pathways).
+- **Router spec** (`canon/horizons-ui/ROUTER-STEREO-STACK-SPEC.md`) —
+  animated CD tray + tap-a-disc fine-tune popup with `Model/Engine/Runtime/Config`
+  overlay; dual-cassette Browse/Load role split; multi-load + execution-mode
+  swap (double-agent / single / MoA / cloud / terminal-agent); tuner-deck
+  extensions (hardware target, cloud/local toggle, max-tokens, STT tuning);
+  cross-tile pathways; overflow-bounce; per-item on/off hotkey.
+- **Terminal spec** (`canon/horizons-ui/TERMINAL-SPEC.md`) — supersedes
+  "defines only"; adds configure/fine-tune models, Termux `RUN_COMMAND_SERVICE`
+  access, LLM-Hub-style describe→draft→confirm→run→auto-fix agent, port-over
+  to Router when Router is idle, live chaptered in-app user manual with full
+  TOC, provider picker; CRT-oscilloscope panel treatment on the console.
+- **Monitor spec** (`canon/horizons-ui/MONITOR-ARCADE-CABINET-SPEC.md`) —
+  pinch-to-zoom (Live-Tile press-to-zoom fallback), inset-cropping.
+- **Parameter packet** (`canon/aesop/PARAMETER-PACKET.md`) — Runtime layer
+  gets `max_tokens` + hardware target; Communication layer gets provider
+  picker; Router popup ↔ four-layer mapping recorded.
+- **Master build blueprint** (`canon/MASTER-BUILD-BLUEPRINT.md`) — new
+  §8.3 (voice failure = accessibility issue not stack change), §9.2
+  (executions model = Mer0vin8ian/Qwen3.5-0.8B), §14.5 (your-fork-first
+  standing rule + Mer0vin8ian HF mapping table + on-device folder layout),
+  §14.6 (provider picker), §14.7 (commercial tiering back-burner), §16
+  open list rewritten.
+- **State of existence** (`canon/STATE-OF-EXISTENCE.md`) — new §4
+  (SAF-picker-scope leading hypothesis for backend-not-found), new §5
+  (2026-08-06 additions consolidated).
+- **Feature inventory** (`canon/horizons-ui/FEATURE-INVENTORY.md`) — new
+  §15 with ~40 tagged rows across Router / Terminal / Monitor / Settings /
+  Voice / UX / launcher / commercial.
+- **Agent brief** (`horizons-ui/AGENT-BRIEF.md`) — base-branch trap
+  corrected (main IS current); SAF-picker-scope added as leading suspect;
+  launcher-duplicate resolution recorded; no-typing rule added.
+- **Clock face** (`canon/horizons-ui/CLOCK-FACE.md`) — CHONK timeout locked
+  to 2 min (operator 2026-08-06, supersedes older "3–5 min"); launcher-tile
+  question noted as not-on-the-wheel.
+
+**Not yet pushed to the vault** — edits sit in this session's working
+tree pending operator confirmation of push access + branch.
+
 ### Still open — next session priority order
+
+**Highest-value single check (new 2026-08-06):**
+0. **SAF picker scope grep.** Suspected root cause of "app can't find
+   backend." Grep Horizons-UI for `ACTION_OPEN_DOCUMENT`,
+   `ACTION_OPEN_DOCUMENT_TREE`, `ContentResolver.openInputStream`,
+   `filesDir`. If loading only happens against `filesDir`, this is the
+   bug and preempts the daemon-suicide theory. Cheap grep, one answer.
 
 **Merge situation (operator call):** PR #34 is open draft, CI green as of run #368.
 PR #33 (`claude/repo-restructure-crash-analysis-j9v9fl`) carries real work
@@ -268,27 +358,43 @@ assessed and merged before any new Router/params/voice work begins. Six PRs
 (#30 #27 #26 #24 #22 #20) overwrite frozen HomeGrid and must not be merged without
 operator sign-off. Remaining ~12 PRs are stale-only and safe.
 
-**Device bugs confirmed from screenshots (not yet fixed):**
-- Navigation bars hiding top/bottom content — needs `WindowCompat.setDecorFitsSystemWindows`
-  + proper inset padding in `MainActivity` / `HorizonsApplication`
+**Device bugs confirmed from screenshots — spec status updated 2026-08-06:**
+- Navigation bars hiding top/bottom content — **now speced in UX-RULES.md §4**
+  (`WindowCompat.setDecorFitsSystemWindows` + `.systemBarsPadding()` on every
+  non-Home room). Implementation pending.
 - Duplicate Router configs ("Terminal: u0_a511" tiles) — `ps` output stored as model field
-- Old three-button floating tile still visible — stale overlay from ~4 months ago
-- No way to edit existing Router configs — create-only, no edit flow
-- Pop-up menus/tap-for-detail on tiles not implemented
+- Old three-button floating tile still visible — **now speced for removal**
+  in FEATURE-INVENTORY §15H. `.uilocal.LocalHomeActivity` gets deleted.
+- No way to edit existing Router configs — create-only, no edit flow. **Now speced
+  in ROUTER-STEREO-STACK-SPEC.md §Fine-tune popup** — `[edit]` action on the
+  popup handles this.
+- Pop-up menus/tap-for-detail on tiles not implemented — **now speced in
+  UX-RULES.md §2** (long-press → plain-language help popup).
 
-**Functional gaps in priority order:**
-1. **The amperage check** — arch compatibility + free RAM vs declared footprint in
+**Functional gaps in priority order (revised 2026-08-06):**
+0. **SAF picker grep** — see above. Blocks everything below if confirmed.
+1. **Loading Genie SDK / models / runtimes from `/LeGRAND_REPOSITORY/…`
+   actually works** — the operator's core failure. Depends on #0.
+2. **The amperage check** — arch compatibility + free RAM vs declared footprint in
    `greenLight()`. Operator's own item 3; only structural defence against LMK kill.
-2. **Four parameter layers** in `RuntimeDef` — Weights/Runtime/Engine/Communication.
-   `temperature` hardcoded `0.7` (`NpuClient:101`, `CloudLlmRuntime:122`); `verbosity`
-   written by SettingsPane, read by nothing; `cores` → GenieX `n_threads`; add
-   compute-unit selector (`npu`/`hybrid`/`gpu`/`cpu`).
-3. **Whisper STT engine** (`WhisperSttEngine.kt` implementing `SttEngine`) + engine
-   family as a Runtime parameter. Recommended default: Whisper base.en int8 (161 MB).
-4. **~60 s utterance cap** — a few lines; stops noise hanging the voice stream.
-5. **Delete `DaemonSttClient`** — dead `:8091` fallback still masks STT failures.
-6. **`http_server.cpp:22-29`** — single 8 KB `recv()` truncates `image_b64`.
-7. **Inbound listener** — zero `ServerSocket`/Ktor. Blocks Termux mic/voice/OAuth.
+3. **Four parameter layers** in `RuntimeDef` — Weights / Runtime / Engine /
+   Communication. Now also carries `max_tokens` + hardware target
+   (`npu`/`hybrid`/`gpu`/`cpu`) + provider picker. `temperature` hardcoded `0.7`
+   (`NpuClient:101`, `CloudLlmRuntime:122`); `verbosity` written by
+   SettingsPane, read by nothing; `cores` → GenieX `n_threads`.
+4. **No-typing rule enforcement** — audit Settings, Archives, Router, Monitor
+   for text fields; convert to pickers.
+5. **Whisper STT engine** (`WhisperSttEngine.kt` implementing `SttEngine`) using
+   `Mer0vin8ian/sherpa-onnx-whisper-base.en` per your-fork-first + engine family
+   as a Runtime parameter.
+6. **~60 s utterance cap** — a few lines; stops noise hanging the voice stream.
+7. **Delete `DaemonSttClient`** — dead `:8091` fallback still masks STT failures.
+8. **`http_server.cpp:22-29`** — single 8 KB `recv()` truncates `image_b64`.
+9. **Termux `RUN_COMMAND_SERVICE` interface** for the Terminal-agent path
+   (extends the older "inbound listener" gap — same underlying missing surface).
+10. **Long-press help popups** wired app-wide.
+11. **Remove `.uilocal.LocalHomeActivity`** launcher entry; wire `.MainActivity`
+    as real `VoiceInteractionService`.
 
 ### Process failures worth not repeating
 

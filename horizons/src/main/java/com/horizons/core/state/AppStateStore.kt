@@ -1,6 +1,8 @@
 package com.horizons.core.state
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,17 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
  * picker selections.
  *
  * Backed by EncryptedSharedPreferences so credentials don't sit in plaintext.
+ *
+ * SELF-HEALING: EncryptedSharedPreferences throws when the Keystore master
+ * key and the encrypted prefs file fall out of sync (app update, reinstall,
+ * or restore-from-backup). That used to hard-crash the app at launch. Now
+ * we catch that, clear the corrupt prefs + stale key, and rebuild empty.
  */
 class AppStateStore(context: Context) {
-    private val prefs = EncryptedSharedPreferences.create(
-        context.applicationContext,
-        FILE,
-        MasterKey.Builder(context.applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    private val prefs: SharedPreferences = createPrefs(context.applicationContext)
 
     private val _snapshot = MutableStateFlow(loadAll())
     val snapshot: StateFlow<Map<String, String>> = _snapshot.asStateFlow()
@@ -44,7 +43,38 @@ class AppStateStore(context: Context) {
         prefs.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap()
 
     companion object {
+        private const val TAG = "AppStateStore"
         private const val FILE = "horizons_app_state"
+
+        private fun buildEncrypted(ctx: Context): SharedPreferences =
+            EncryptedSharedPreferences.create(
+                ctx,
+                FILE,
+                MasterKey.Builder(ctx)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build(),
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+
+        private fun createPrefs(ctx: Context): SharedPreferences = try {
+            buildEncrypted(ctx)
+        } catch (e: Exception) {
+            Log.e(TAG, "Encrypted prefs corrupt — wiping and rebuilding", e)
+            try {
+                ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().clear().commit()
+                val prefsFile = java.io.File(ctx.filesDir.parent, "shared_prefs/$FILE.xml")
+                if (prefsFile.exists()) prefsFile.delete()
+                val masterKeyFile = java.io.File(ctx.filesDir.parent, "shared_prefs/__androidx_security_crypto_encrypted_prefs_key_keyset__")
+                if (masterKeyFile.exists()) masterKeyFile.delete()
+                val valueKeyFile = java.io.File(ctx.filesDir.parent, "shared_prefs/__androidx_security_crypto_encrypted_prefs_value_keyset__")
+                if (valueKeyFile.exists()) valueKeyFile.delete()
+                buildEncrypted(ctx)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Rebuild also failed — falling back to unencrypted prefs", e2)
+                ctx.getSharedPreferences("${FILE}_fallback", Context.MODE_PRIVATE)
+            }
+        }
 
         // Credentials
         const val KEY_HF_TOKEN          = "hf.token"

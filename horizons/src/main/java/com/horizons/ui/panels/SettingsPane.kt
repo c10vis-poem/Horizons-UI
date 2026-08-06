@@ -1,6 +1,7 @@
 package com.horizons.ui.panels
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -59,6 +60,7 @@ import com.horizons.ModelImportActivity
 import com.horizons.Panel
 import com.horizons.core.state.AppStateStore
 import com.horizons.core.state.RouterConfig
+import com.horizons.core.storage.StorageScanner
 import com.horizons.ui.VaultDoorBackground
 import com.horizons.ui.theme.HorizonsColors
 import kotlinx.coroutines.Dispatchers
@@ -190,6 +192,173 @@ fun SettingsPane(
                     )
                 }
 
+                // ── Scan device storage ────────────────────────────────────
+                //
+                // Bulk companion to the single-file picker above. The operator's
+                // GenieX SDK, model shards, and .so libraries usually live in a
+                // folder on internal storage (e.g. LeGRAND_REPOSITORY/) — the
+                // single-file "Open with" flow makes those invisible to the app
+                // because they were never dispatched to it. This walks common
+                // storage roots and lists what it finds, so each file gets a
+                // one-tap import into the app's own directories.
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Or scan device storage for existing models / libraries.",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                )
+
+                var scanResults by remember { mutableStateOf<List<StorageScanner.Group>>(emptyList()) }
+                var scanning by remember { mutableStateOf(false) }
+                var scanError by remember { mutableStateOf<String?>(null) }
+                var scanTick by remember { mutableStateOf(0) }
+                val canScan = remember(scanTick) { StorageScanner.canScan() }
+
+                if (!canScan) {
+                    Text(
+                        "MANAGE_EXTERNAL_STORAGE is required. Grant it in Android Settings, then return.",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        color = Color(0xFFF5C518),
+                    )
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = Intent(AndroidSettings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                    data = Uri.parse("package:${ctx.packageName}")
+                                }
+                                ctx.startActivity(intent)
+                            } catch (_: Throwable) {
+                                ctx.startActivity(Intent(AndroidSettings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5C518)),
+                    ) {
+                        Text(
+                            "Grant storage access →",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            color = Color.Black,
+                        )
+                    }
+                    Button(
+                        onClick = { scanTick++ },
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent.copy(alpha = 0.3f)),
+                    ) {
+                        Text(
+                            "I've granted it — check again",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = Accent,
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            scanning = true
+                            scanError = null
+                            scope.launch {
+                                try {
+                                    scanResults = StorageScanner.scan()
+                                    if (scanResults.isEmpty()) {
+                                        scanError = "Scanned Download, Documents, LeGRAND_REPOSITORY and root — no model or library files found."
+                                    }
+                                } catch (e: Throwable) {
+                                    scanError = "Scan failed: ${e.message}"
+                                } finally {
+                                    scanning = false
+                                }
+                            }
+                        },
+                        enabled = !scanning,
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                    ) {
+                        Text(
+                            if (scanning) "Scanning…"
+                            else if (scanResults.isEmpty()) "Scan device storage"
+                            else "Re-scan",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                        )
+                    }
+
+                    scanError?.let { err ->
+                        Text(
+                            err,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            color = Color(0xFFFF6B6B),
+                        )
+                    }
+
+                    scanResults.forEach { group ->
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            group.dir.replace(Environment.getExternalStorageDirectory().absolutePath, "/sdcard"),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Accent.copy(alpha = 0.7f),
+                        )
+                        Surface(
+                            color = HorizonsColors.Surface,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                group.files.forEach { file ->
+                                    var rowStatus by remember(file.absolutePath) { mutableStateOf<String?>(null) }
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                file.name,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 11.sp,
+                                                color = Color.White,
+                                            )
+                                            Text(
+                                                "${file.kind.label} · ${file.sizeMb} MB",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 9.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                            )
+                                            rowStatus?.let { s ->
+                                                Text(
+                                                    s,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 9.sp,
+                                                    color = ReadyGreen,
+                                                )
+                                            }
+                                        }
+                                        TextButton(onClick = {
+                                            rowStatus = "importing…"
+                                            scope.launch {
+                                                val dest = StorageScanner.importInto(ctx, file)
+                                                rowStatus = if (dest != null) "imported" else "failed"
+                                                if (dest != null) importTick++
+                                            }
+                                        }) {
+                                            Text(
+                                                "Import",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 11.sp,
+                                                color = Accent,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
                 Button(
                     onClick = { onNavigate(Panel.Router) },
                     colors = ButtonDefaults.buttonColors(containerColor = HorizonsColors.TileRouter),

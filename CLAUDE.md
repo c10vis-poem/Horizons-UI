@@ -26,33 +26,73 @@
 > Basing off RELEASE now DISCARDS work. Verify with:
 >   git rev-parse origin/main:horizons/src/main/java/com/horizons/ui/HomeGrid.kt
 >
-> ### THE ACTUAL DISEASE: 19 OPEN DRAFT PRs, NONE MERGED
-> Every session branched from main, built something real, opened a draft PR,
-> got CI green, and stopped. So main never accumulates and each session
-> rediscovers or rebuilds what already exists elsewhere. This is why the
-> docs and the code disagree: the docs describe the UNION of 19 branches,
-> any session sees only main. It is a merge problem, not a docs problem.
+> ### PR PILE — 12 open (down from 21), 2 merged today, 8 closed tonight
+> The 19-PR pile problem is being actively drained. Session 22 late-night
+> triage + operator sign-off dropped 11 PRs total. Current state:
 >
-> SIX of those PRs actively edit HomeGrid.kt and would OVERWRITE THE FREEZE:
->   #30 #27 #26 #24 #22 #20  ← do not merge without operator sign-off
-> PR #33 carries the CORRECT blob plus real work (see below).
+>   MERGED TO MAIN 2026-08-06 by operator (both by Clovis-Merovingian):
+>     #33 (`beaa9fa`) — Router loadConfig, MoonshineSttEngine, NpuClient port/healthPath
+>     #34 (`02f75ec`) — FUSE BOX gate removed, Silero VAD fetched, import allowlist removed,
+>                       MonitorPane truncation fix, manual command, wiki/BUILD-STATUS.md
 >
-> ### PR #33 — read it before writing anything in Router/params/voice
-> `claude/repo-restructure-crash-analysis-j9v9fl`, open, draft, unmerged.
-> Contains: core/stt/MoonshineSttEngine.kt (in-process STT on the sherpa
-> AAR, no download, user-is-the-loader), switchOn() driving DaemonLauncher
-> from the RuntimeDef, NpuClient taking port/healthPath. Its BODY documents
-> only the Router change — the STT engine is invisible from the description.
-> READ THE DIFF, NOT THE WRITE-UP. It explicitly did NOT touch gate
-> semantics and did NOT add the arch/RAM check.
+>   CLOSED TONIGHT (8, silent, superseded by later work on main):
+>     #4 #5 #6 #7 #9 #10 (June compile-pipeline + early-session)
+>     #25 (crash-fix — cherry-picked into #35, so its content lives on)
+>     #28 #29 (skills repo-local, no app effect)
 >
-> ### PR #34 — current session's work, open draft, CI green (run #368)
-> `claude/deprecated-repo-recovery-ycl0i8`. Contains: Router FUSE BOX gate
-> removed (Rule 7a fix), Silero VAD CI fetch, 503 Content-Length fix,
-> ModelImportActivity .so allowlist removed (libggml-hexagon.so etc. now
-> accepted), MonitorPane detail truncation fixed, `manual` command in Monitor
-> console, wiki/BUILD-STATUS.md (mechanical feature inventory).
-> Needs operator decision to merge. Merge #33 first if possible.
+>   OPEN, 6 HomeGrid-touching (DO NOT MERGE without operator sign-off):
+>     #20 #22 #24 #26 #27 #30
+>
+>   OPEN, 5 yellow-bucket (need a diff before decision):
+>     #12 (self-contained APK / jniLibs backend bundle — partial pieces
+>          already applied to #35, jniLibs bundling itself NOT applied)
+>     #13 (App track: GGUF/llama-server runtime, clifford hardening)
+>     #14 (NPU offload verdict + hexagon knobs)
+>     #16 (wiki: master_wiki → md+JSONL — probably docs-only)
+>     #19 (Session 17: "make the app work end-to-end" — potentially large)
+>
+>   OPEN, mine — #35 (see below).
+>
+> ### PR #35 — TONIGHT'S SESSION WORK (open, draft:false)
+> `claude/novus-device-file-loading-ij4k4r`. Contains, in commit order:
+>   `100891c` CLAUDE.md resume + SOTU refresh (this file's docs pass)
+>   `34cfac2` Insets fix (systemBarsPadding on non-Home panes) + bulk
+>             StorageScanner in Settings → Import (walks /sdcard for
+>             .gguf/.onnx/.bin/.so/geniex.json under LeGRAND_REPOSITORY,
+>             Download, Documents; one-tap import per file)
+>   `985e593` Self-healing AppStateStore (3-tier: encrypted → wipe+retry →
+>             unencrypted) + non-fatal onCreate (from PR #25) + :clifford
+>             process no longer touches appState (from PR #12) +
+>             DaemonLauncher searches both nativeLibraryDir and filesDir
+>   `a85128a` Guarded retry in onCreate catch + safeLoadAll for
+>             decrypt-at-read failures
+> Companion vault PR: c10vis-poem/NovA-Corpus#7 (10 canon files, docs only).
+>
+> ### DEVICE STATUS AT END OF SESSION 22 late — UNRESOLVED
+> Operator installed the `34cfac2` APK — the insets+scanner build WITHOUT
+> the crash fix — and reported "crashed in one split second." That's
+> expected because 34cfac2 doesn't have the AppStateStore self-healing.
+> The `985e593` and `a85128a` builds land the crash fix + hardening; the
+> `a85128a` APK URL is:
+>   https://github.com/c10vis-poem/Horizons-UI/releases/download/debug-claude-novus-device-file-loading-ij4k4r/horizons.apk
+> **NEXT SESSION MUST VERIFY** whether the operator installed the newer
+> build and whether the crash reproduced. If it still crashes on `a85128a`,
+> get the crash log from `/sdcard/Android/data/com.horizons/files/failures/`
+> before writing any more speculative hardening — flying blind was the
+> problem, not the fix.
+>
+> ### NOT applied from PR #12 (available if wanted)
+> The jniLibs backend-bundle piece — build-apk.yml downloading llama-server
+> + ggml/hexagon .so from `c10vis-poem/Novus-Agenti` releases, plus the
+> `libort_engine.so` rename trick to bypass SELinux exec-from-filesDir.
+> Would make the APK carry its own backend so the operator doesn't have
+> to import ort_engine / llama-server manually. Skipped tonight because
+> the source-repo releases weren't verified as existing/current, and CI
+> would break silently if a download 404s. Also NOT applied: PR #12's
+> ModelImportActivity allowlist re-introduction (main deliberately removed
+> the allowlist entirely — would revert), NpuClient dual-protocol
+> constructor (main already has port+healthPath from #33 — would collide),
+> CLAUDE.md rewrite (would revert this file — do not touch).
 >
 > ### HARD STOPS
 > HomeGrid.kt is FROZEN at 984b061 / blob 618cf4b6. Never edit it, for any
@@ -339,24 +379,115 @@ Files touched in `c10vis-poem/OBSIDIAN-Master_Wiki`:
   to 2 min (operator 2026-08-06, supersedes older "3–5 min"); launcher-tile
   question noted as not-on-the-wheel.
 
-**Not yet pushed to the vault** — edits sit in this session's working
-tree pending operator confirmation of push access + branch.
+**Pushed to the vault as `c10vis-poem/NovA-Corpus#7`** (repo was renamed
+from `obsidian-master_wiki` — old URL redirects). Open, draft, unmerged.
 
-### Still open — next session priority order
+### Session 22 late — execution phase 2026-08-06 (this file's newest edits)
 
-**Highest-value single check (new 2026-08-06):**
-0. **SAF picker scope grep.** Suspected root cause of "app can't find
-   backend." Grep Horizons-UI for `ACTION_OPEN_DOCUMENT`,
-   `ACTION_OPEN_DOCUMENT_TREE`, `ContentResolver.openInputStream`,
-   `filesDir`. If loading only happens against `filesDir`, this is the
-   bug and preempts the daemon-suicide theory. Cheap grep, one answer.
+After the docs pass, the operator escalated: "just build what I've been
+asking for for four months, no more piecemeal." The rest of the session
+was device-facing code, all committed to `claude/novus-device-file-loading-ij4k4r`
+(PR #35), never to a new branch (Rule: stop adding PRs to the pile).
 
-**Merge situation (operator call):** PR #34 is open draft, CI green as of run #368.
-PR #33 (`claude/repo-restructure-crash-analysis-j9v9fl`) carries real work
-(MoonshineSttEngine, Router loadConfig, NpuClient port/healthPath) and should be
-assessed and merged before any new Router/params/voice work begins. Six PRs
-(#30 #27 #26 #24 #22 #20) overwrite frozen HomeGrid and must not be merged without
-operator sign-off. Remaining ~12 PRs are stale-only and safe.
+**Merge triage completed with operator sign-off:**
+
+- 8 PRs closed silently as stale/superseded: #4 #5 #6 #7 #9 #10 #28 #29.
+- PR #25 closed after its 2-file crash-fix diff was cherry-picked into #35.
+- 5 yellow-bucket PRs (#12 #13 #14 #16 #19) left open pending diff review.
+- 6 red HomeGrid PRs (#20 #22 #24 #26 #27 #30) left open; operator sign-off
+  still required.
+- **Open count: 21 → 12.**
+
+**PR #35 device-facing fixes landed (four commits):**
+
+1. **Insets** — `MainActivity` container gets `.systemBarsPadding()`.
+   HomeGrid untouched (frozen). Bars no longer clip top/bottom of any pane.
+2. **Bulk storage scanner** — new `core/storage/StorageScanner.kt`; new
+   "Scan device storage" section in SettingsPane under Import. Walks
+   `LeGRAND_REPOSITORY/`, `Download/`, `Documents/`, sdcard root at depth 1.
+   Groups results by folder, one-tap import per file. Handles the
+   MANAGE_EXTERNAL_STORAGE grant flow inline with "Grant storage access →"
+   button + "check again" so operator doesn't back out of the pane.
+3. **Crash fix** (from PR #25 + PR #12 slice) — the flash-and-crash.
+   `AppStateStore` gets 3-tier self-healing `createPrefs()` (encrypted →
+   wipe stale keysets + retry → unencrypted `SharedPreferences` fallback);
+   `HorizonsApplication.onCreate` catch block logs instead of re-throwing
+   and initializes `appState` if the earlier init left it unset; `:clifford`
+   process no longer touches `appState` (was racing the Keystore keyset with
+   main process — the same crash from a different angle). `DaemonLauncher`
+   `LD_LIBRARY_PATH` now searches both `nativeLibraryDir` and `filesDir`.
+4. **Extra hardening** — guarded retry in the onCreate catch (a second
+   throw from `AppStateStore(this)` no longer propagates); `safeLoadAll()`
+   catches `AEADBadTagException` at first decrypt (different failure mode
+   from `createPrefs` — can succeed and then throw at `.all`).
+
+**Device verification: UNRESOLVED.** Operator installed the `34cfac2` APK
+(insets+scanner without crash fix) and reported a fresh flash-and-crash —
+expected, because that commit doesn't have the AppStateStore fix. The
+`985e593` and `a85128a` APKs weren't confirmed installed before session end.
+Next session's first move: verify which build the operator actually has
+on device, and if it still crashes on `a85128a`, get the crash report
+from `/sdcard/Android/data/com.horizons/files/failures/` (CrashRecorder
++ FailureMonitor already write there). No more speculative hardening
+without a stack trace.
+
+**Not applied from PR #12** — the jniLibs backend-bundle piece.
+Would make the APK ship its own `ort_engine` + llama-server + DSP skels
+inside `jniLibs/arm64-v8a/`. Skipped because the workflow's source URLs
+point at `c10vis-poem/Novus-Agenti/releases/latest-debug` which wasn't
+verified as existing/current. Available if wanted next session — the
+diff is in PR #12's `build-apk.yml` steps.
+
+### Still open — next session priority order (revised 2026-08-06 late)
+
+**HIGHEST-VALUE SINGLE CHECK — do this first:**
+
+0. **Confirm the device crash on `a85128a`.** If the operator installed
+   the newest build and it still crashes, pull the crash log from
+   `/sdcard/Android/data/com.horizons/files/failures/`. That is the
+   only way to know what's actually failing. Everything below assumes
+   the AppStateStore path was the real cause — if the log says otherwise,
+   the whole priority list re-sorts. No more hardening blind.
+
+1. **Loading Genie SDK / models / runtimes from `/LeGRAND_REPOSITORY/…`
+   actually works** — the operator's core failure. The storage scanner
+   in Settings gives visibility; needs device-verification that
+   tap-import copies files correctly and that consumers (DaemonLauncher,
+   NpuClient, RuntimeDefStore) find them post-import.
+
+2. **jniLibs backend bundle from PR #12** — if operator wants the APK
+   self-contained instead of importing binaries manually. Big commit,
+   depends on the `c10vis-poem/Novus-Agenti` release existing with the
+   right assets. Verify that first.
+
+3. **The amperage check** — arch compatibility + free RAM vs declared
+   footprint in `greenLight()`. Operator's own item 3.
+
+4. **Four parameter layers** in `RuntimeDef` — Weights/Runtime/Engine/
+   Communication. Now also carries `max_tokens` + hardware target
+   (`npu`/`hybrid`/`gpu`/`cpu`) + provider picker. `temperature` hardcoded
+   `0.7` (`NpuClient:101`, `CloudLlmRuntime:122`); `verbosity` written by
+   SettingsPane, read by nothing; `cores` → GenieX `n_threads`.
+
+5. **No-typing rule enforcement** — audit Settings, Archives, Router,
+   Monitor for text fields; convert to pickers.
+
+6. **Whisper STT engine** (`WhisperSttEngine.kt` implementing `SttEngine`)
+   using `Mer0vin8ian/sherpa-onnx-whisper-base.en` per your-fork-first +
+   engine family as a Runtime parameter.
+
+7. **~60 s utterance cap** — a few lines; stops noise hanging the voice stream.
+
+8. **Delete `DaemonSttClient`** — dead `:8091` fallback still masks STT failures.
+
+9. **`http_server.cpp:22-29`** — single 8 KB `recv()` truncates `image_b64`.
+
+10. **Termux `RUN_COMMAND_SERVICE` interface** for the Terminal-agent path.
+
+11. **Long-press help popups** wired app-wide.
+
+12. **Remove `.uilocal.LocalHomeActivity`** launcher entry; wire
+    `.MainActivity` as real `VoiceInteractionService`.
 
 **Device bugs confirmed from screenshots — spec status updated 2026-08-06:**
 - Navigation bars hiding top/bottom content — **now speced in UX-RULES.md §4**

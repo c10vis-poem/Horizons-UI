@@ -290,6 +290,152 @@ the bundle. They are not loaded directly.
 > **Recommended models:** maintained separately so the list can grow. Start
 > from the operator's own Hugging Face buckets.
 
+---
+
+## Chapter 2A · You already have hundreds of files — sorting them out
+
+If the device is already full of downloaded weights, runtimes and loose
+archives, the problem is not *getting* models — it is **working out what you
+have and which files belong together.**
+
+Every command below runs in the **Terminal** tab, as-is. The in-app shell runs
+as Horizons, which holds `MANAGE_EXTERNAL_STORAGE`, so it can see all of
+`/storage/emulated/0` without root.
+
+### Step 1 — Take inventory
+
+Find every language model:
+
+    find /storage/emulated/0 -iname "*.gguf" -size +10M 2>/dev/null
+
+Find every ONNX graph (voice models, and some LLM exports):
+
+    find /storage/emulated/0 -iname "*.onnx" 2>/dev/null
+
+Find QAIRT bundles — the `geniex.json` is required, so it is the marker:
+
+    find /storage/emulated/0 -iname "geniex.json" 2>/dev/null
+
+Find loose archives you may never have unpacked:
+
+    find /storage/emulated/0 \( -iname "*.tar.bz2" -o -iname "*.tar.gz" \
+      -o -iname "*.zip" \) -size +10M 2>/dev/null
+
+Find candidate runtime binaries:
+
+    find /storage/emulated/0 -type f -size +1M \
+      \( -iname "geniex*" -o -iname "*llama*server*" -o -iname "ort_engine" \
+         -o -iname "*.so" \) 2>/dev/null
+
+### Step 2 — Identify what each pile actually is
+
+You do not need to guess. **Each family has a signature file that no other
+family has.** Search for the signature, and the directory it sits in is the
+model.
+
+| Signature file | The directory is | Loader |
+|---|---|---|
+| `preprocess.onnx` | **Moonshine STT** | `from_moonshine` |
+| `*-encoder*.onnx` + `*-decoder*.onnx` | **Whisper STT** | `from_whisper` |
+| `voices.bin` | **Kokoro TTS** | Kokoro |
+| `silero_vad.onnx` | **Silero VAD** | already in the APK — you do not need this |
+| `geniex.json` | **QAIRT bundle** | `qairt` |
+| a single `*.gguf` | **GGUF language model** | `llama_cpp` |
+| `model.onnx` + `tokens.txt`, no `voices.bin` | ambiguous | inspect further |
+
+So, to locate every Moonshine set on the device:
+
+    find /storage/emulated/0 -iname "preprocess.onnx" 2>/dev/null
+
+and every Whisper set:
+
+    find /storage/emulated/0 -iname "*-tokens.txt" 2>/dev/null
+
+Each result's **parent directory** is the model folder you will point the app at.
+
+### Step 3 — Check a set is complete before you move it
+
+A half-downloaded model is the most common cause of "it says not ready and I
+don't know why." List a candidate directory with sizes:
+
+    ls -lh /storage/emulated/0/Download/moonshine-base-en-int8/
+
+Compare against the required set for that family (Chapter 3). Rough sanity
+sizes, so you can spot a truncated download at a glance:
+
+| Model | Expect |
+|---|---|
+| Whisper tiny.en int8 | ~104 MB total |
+| Moonshine tiny int8 | ~124 MB total |
+| Whisper base.en int8 | ~161 MB total (decoder alone ~131 MB) |
+| Moonshine base int8 | ~287 MB total |
+| Kokoro v1.0 | ~88–103 MB + `espeak-ng-data/` |
+| Silero VAD | ~629 KB |
+
+Total a directory:
+
+    du -sh /storage/emulated/0/Download/moonshine-base-en-int8/
+
+If it is far under, the download was truncated. Re-fetch it rather than
+debugging the app.
+
+### Step 4 — Give each model its own folder
+
+**One model, one folder.** This is the residency rule and it is what makes
+swapping a model drag-and-drop instead of a rebuild. Do not pile several
+models into one directory — the loaders match on filename, and two models in
+one folder will collide.
+
+    mkdir -p /storage/emulated/0/models/moonshine-base-en-int8
+    mv /storage/emulated/0/Download/preprocess.onnx \
+       /storage/emulated/0/Download/encode.int8.onnx \
+       /storage/emulated/0/Download/uncached_decode.int8.onnx \
+       /storage/emulated/0/Download/cached_decode.int8.onnx \
+       /storage/emulated/0/Download/tokens.txt \
+       /storage/emulated/0/models/moonshine-base-en-int8/
+
+A layout that stays readable as the collection grows:
+
+    /storage/emulated/0/models/
+      qwen3.5-9b-q4_0/            model.gguf
+      moonshine-base-en-int8/     the five Moonshine files
+      whisper-base-en-int8/       encoder, decoder, tokens
+      kokoro-multi-lang-v1_0/     model.onnx voices.bin tokens.txt espeak-ng-data/
+
+### Step 5 — Unpack anything still archived
+
+    cd /storage/emulated/0/models
+    tar -xjf /storage/emulated/0/Download/kokoro-multi-lang-v1_0.tar.bz2
+
+`.tar.bz2` → `-xjf`, `.tar.gz` → `-xzf`. Check what landed before deleting the
+archive.
+
+### Step 6 — Point the app at them
+
+Now the app takes over. Nothing is copied and nothing is downloaded — you are
+handing it an absolute path.
+
+**Language model:** Monitor → Model library → find it → **`PLUG IN`**. That
+pins it. Nothing loads yet.
+
+**Voice models:** Settings → the voice section → set the folder for STT and
+TTS, and choose the **engine family** — Whisper and Moonshine need different
+loaders, so the app cannot infer it from the files alone.
+
+**Runtimes:** Terminal → Runtime tab → define name, binary, port, health
+endpoint and args template (Chapter 1) → ship to Monitor.
+
+Then Monitor → green lights → **HAND TO ROUTER** → flip it.
+
+### If you would rather not sort it by hand
+
+You do not have to move anything. Every loader accepts a **pinned absolute
+path**, so you can point the app at a folder wherever it already sits. The
+tidy layout above is for your sanity, not the app's.
+
+What the app cannot do is resolve a folder holding two different models, or a
+set with a file missing. Those two cases are worth fixing by hand.
+
 ## Chapter 3 · Preparing the voice layer
 
 **Voice runs in-process, on the CPU, inside the APK. It never touches the NPU** —
@@ -447,6 +593,9 @@ network error scoped to the browser — it does not mean an engine died.
 | Flip reports red lights | Something is missing | Read the amber line; it names it |
 | Model runs but never uses the NPU | Launched by Termux | Launch it from a `RuntimeDef` instead |
 | Voice does nothing | Model files missing | Check the folder layout in Chapter 3 |
+| Model not listed anywhere | Not where the app looks, or set incomplete | Chapter 2A steps 1–3 — find it, then check the set is complete |
+| "Not ready" and no reason given | A file in the set is missing | `ls -lh` the folder; compare against Chapter 3 |
+| Two models in one folder | Loaders match on filename and collide | One model, one folder — Chapter 2A step 4 |
 | `vim`/`htop` produce garbage | No PTY — the shell is a pipe | Use non-interactive commands |
 | App died with no trace | Likely killed from outside | `tail -40 crash.log` — empty means external kill |
 

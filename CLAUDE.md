@@ -116,95 +116,122 @@ Type `/memory` in any Claude Code session to reload full project context.
 5. Produce a SOTU summary + next action, confirm before touching any file
 
 ---
-## State of the Union — 2026-08-06 (session 21)
+## State of the Union — 2026-08-06 (session 22)
 
-**This session did almost no coding on purpose.** It read the corpus, verified
-claims against live code, and found that a large share of what the last several
-sessions "knew" was wrong. The corrections matter more than the one fix that
-landed.
+**This session read the corpus and verified it against live code.** Most of what it
+produced is corrections. Several long-standing "facts" in these documents turned out
+to be false, and two of them were actively costing every session that inherited them.
 
-### The disease, finally named: 19 open draft PRs, none merged
+### The disease: 19 open draft PRs, none merged
 
-Every session since roughly PR #6 branched from `main`, built something real,
-opened a **draft** PR, got CI green, and stopped. `main` therefore never
-accumulates, and each new session starts from a `main` missing all of its
-predecessors' work — so it rediscovers or rebuilds what already exists.
+Every session since roughly PR #6 branched from `main`, built something real, opened
+a **draft** PR, got CI green, and stopped. `main` never accumulates, so each session
+starts from a `main` missing its predecessors' work and rebuilds what already exists.
 
-This is the root cause of the "docs lie" problem. The documents describe the
-**union of nineteen branches**; any given session sees only `main`. Both sides
-of every contradiction were telling the truth about different trees.
+**This is why the docs and the code disagree.** The documents describe the *union of
+nineteen branches*; any session sees only `main`. Both sides of most contradictions
+were telling the truth about different trees. It is a merge problem, not a docs
+problem, and nothing gets healthy until it is resolved. **Operator call.**
 
-**Nothing else gets healthy until this is resolved.** It is an operator call.
+### HomeGrid freeze — branch audit (blob `618cf4b6` = correct)
 
-### Verified facts — measured this session, trust over older docs
+**`main` already has the correct HomeGrid.** So do `RELEASE` and PR #33. Nothing
+needs merging for the home screen.
 
-| Claim | Verified reality |
+**Six open PRs actively edit `HomeGrid.kt` and would overwrite the freeze:**
+**#30 · #27 · #26 · #24 · #22 · #20**. The other thirteen carry an older blob only
+because they branched early — git discards that on merge, so they are safe.
+
+### Verified facts — measured this session, trust these over older prose
+
+| Old claim | Verified reality |
 |---|---|
-| "`main` lacks the working home screen" | **FALSE.** `HomeGrid.kt` = blob `618cf4b6` on `main`, `RELEASE`, and PR #33 alike; fonts identical |
-| RELEASE is the safe base | **Inverted.** RELEASE is **9 commits behind** `main`, 0 ahead. Basing off it discards work |
-| `greenLight()` checks 2 of 4 | **All four exist** (`RuntimeDefStore.kt:119-149`), exec bit at `:126-130` |
-| `switchOn()` re-implements the check | **It consults** — `RouterPane.kt:82` |
-| `HomeGrid.kt:69` npuReady bug (frozen, unfixable) | **A phantom.** No `startsWith("Adreno 830")` exists anywhere; `HomeGrid.kt` never reads `backendStatus`. Comment corrected at `LlmRuntime.kt` |
+| "`main` lacks the working home screen" | **FALSE.** `HomeGrid.kt` = `618cf4b6` on `main`, `RELEASE`, and PR #33; fonts identical |
+| "Base off `RELEASE`, never `main`" | **INVERTED.** `RELEASE` is **9 commits behind** `main`, 0 ahead. Basing off it *discards* work |
+| `greenLight()` checks 2 of 4 | **All four exist** (`RuntimeDefStore.kt:119-149`); exec bit at `:126-130` |
+| `HomeGrid.kt:69` npuReady bug (frozen, unfixable) | **A phantom.** No `startsWith("Adreno 830")` exists anywhere; `HomeGrid.kt` never reads `backendStatus`. Consumers use `contains()` and separate Cloud from NPU correctly |
 | Cloud connectors `absent`, "no compiled remote client" | **FALSE.** `CloudLlmRuntime.kt` ships OpenRouter (`:50`) + SambaNova (`:59`) + custom, SSE streaming |
-| In-process Moonshine STT doesn't exist | **It does** — `MoonshineSttEngine.kt`, on PR #33, unmerged |
-| "Moonshine is materially smaller than Whisper base" | **FALSE.** Measured: Whisper base.en 161 MB, Moonshine base **287 MB** |
-| QAI Hub / QAIRT path is "dormant fallback" | **FALSE.** Both GenieX runtimes are live; `COMPILE-PIPELINE.md` is wrong |
+| In-process Moonshine STT does not exist | **It does** — `core/stt/MoonshineSttEngine.kt`, on **PR #33**, unmerged |
+| Kokoro downloads 200 MB at boot | **Already fixed.** `KokoroModelManager` is a resolver; `refresh()` is a filesystem check |
+| "Moonshine is materially smaller than Whisper base" | **FALSE.** Measured: Whisper base.en **161 MB**, Moonshine base **287 MB** |
 
-**The genuinely missing check is the amperage gate** — architecture compatibility
-and free RAM vs the model's declared footprint. Not the exec bit. That is the
-operator's own item 3 from `2026-07-18.md`, and the only structural defence
-against the LMK theory.
+**Measured STT sizes** (sherpa-onnx int8, loadable set): Whisper tiny.en 104 MB ·
+Moonshine tiny 124 MB · **Whisper base.en 161 MB** · Moonshine base 287 MB.
 
 ### What landed this session
 
-- **Kokoro no longer downloads.** `KokoroModelManager` was a ~200 MB GitHub
-  fetch + bzip2 + untar called unconditionally from `onCreate()`, with
-  `tts.init()` loading the ONNX in-process right after. It is now a **resolver**:
-  candidate device folders, an optional pinned path (`tts.kokoro_dir`), and an
-  honest "missing: …" state. Mirrors `MoonshineSttEngine`'s user-is-the-loader
-  pattern. This was the single largest thing the app did at boot and the prime
-  suspect for the ~90 s first crash. **Unverified on device.**
-- **`LlmRuntime`'s status-string comment corrected** — it was the source that kept
-  regenerating the phantom `HomeGrid.kt:69` bug across sessions.
+- **The Router carries current.** `switchOn()`'s blocking `⚡ FUSE BOX` gate is gone
+  (Rule 7a). It consults the Monitor, reports red lights, and attempts the flip
+  regardless. Also closed the bypass — `if (def != null)` let cloud/PWA/terminal
+  configs skip the Monitor entirely. Red banner → amber informational readout.
+- **Silero VAD actually ships.** CI never fetched `silero_vad.onnx`, so `VadFactory`
+  silently degraded to RMS on every device. Now fetched (~2 MB).
+- **503 body no longer truncated** — `Content-Length: 8` for a 9-byte `not ready`.
+
+**None of it is device-verified.** CI is the only check that has run.
+
+### Architecture confirmed by the operator this session
+
+- **Consumer-grade, not device-specific.** Any Android device; iOS and x86 later.
+  Compute target must be **user-selectable** — strictly NPU, dispersed across
+  NPU/GPU/CPU, targeted, or left to run naturally. This maps onto GenieX's existing
+  `--device` aliases (`npu` / `hybrid` / `gpu` / `cpu`) and belongs in `RuntimeDef`'s
+  **Runtime** layer. Note `HorizonsApplication:116` hardcodes `"Adreno 830"` — a lie
+  on any other phone.
+- **Both GenieX runtimes are live**, selected by `plugin_id`:
+  `llama_cpp` (GGUF; NPU via `ggml-hexagon` / GPU via OpenCL / CPU) and
+  `qairt` (QAIRT `.bin` shards + a required `geniex.json`; NPU only, max performance).
+  **TFLite / LiteRT / QAT are input formats to the AI Hub compile**, which emits the
+  bundle `qairt` loads. **"The GGML route" means the llama.cpp *runtime*** — not
+  Google LiteRT, which appears in these docs only as the *rejected* in-process option.
+- **Quantization + model selection: SETTLED. Q4_0. Do not reopen.**
+- **Model residency:** every model gets its **own isolated device folder**, loaded by
+  absolute path. The APK never downloads weights. Drag-and-drop to swap. Same storage
+  either way — downloading only ever bought a boot-time failure mode.
+- **Voice: in-process on the sherpa AAR, on device, through the APK. NEVER the NPU** —
+  the actions model and query model already take turns there. This closes blueprint
+  §8.1. Termux+proot voice was a temporary stopgap and is discarded; port its
+  parameters, not its architecture.
+- **WIRED ≠ LAUNCHED.** The APK should be capable of everything on the phone — sockets,
+  the harness, permissions, an initial runtime for its own backend, NPU manager + file
+  search, WebView/Chromium hooks, API + cloud inference, OpenRouter fallback. What is
+  forbidden is *loading and landing* with it.
+- **Daemon split (OOM safety).** A dying process cannot report its own death, so OOM
+  recovery **requires an external observer**. Separate: **LLM inference** (+ vision
+  co-located) and the **watchdog/recovery** in `:clifford`. In-process: voice, sockets,
+  permissions, file search, UI. The NPU manager stays in-APK for coordination but must
+  **not** own OOM detection.
 
 ### Still open, in rough priority order
 
-1. **The 19 unmerged PRs.** Operator call. Six of them (#30 #27 #26 #24 #22 #20)
-   would overwrite the frozen `HomeGrid.kt` if merged.
-2. **Assess PR #33** before writing anything in Router / params / voice — much of
-   it may already be done there.
-3. **`switchOn()` both ends** — delete the blocking `⚡ FUSE BOX` banner (rejected
-   Rule 7a behaviour) and close the no-`RuntimeDef` bypass.
-4. **The amperage check** — arch + RAM, added to `greenLight()`.
-5. **Four parameter layers real in `RuntimeDef`** — Weights/Runtime/Engine/
-   Communication. `temperature` still hardcoded `0.7` (`NpuClient:109`,
-   `CloudLlmRuntime:122`); `verbosity` slider read by nothing; `cores` maps to
-   GenieX's real `n_threads` in `geniex_ModelConfig`.
-6. **Silero VAD never ships** — `VadFactory` prefers it but CI never fetches
-   `silero_vad.onnx`, so it silently degrades to RMS on every device.
-7. **Inbound listener** — still zero `ServerSocket`/Ktor. Blocks Termux getting
+1. **The 19 unmerged PRs.** Operator call. Six would overwrite the frozen HomeGrid.
+2. **Assess PR #33** before writing in Router/params/voice — it carries
+   `MoonshineSttEngine`, `switchOn()`→`DaemonLauncher`, and `NpuClient` port/healthPath.
+3. **The amperage check** — arch compatibility + free RAM vs declared footprint, added
+   to `greenLight()`. The operator's own item 3, and the only structural defence
+   against the LMK theory. **This, not the exec bit, is the missing check.**
+4. **Four parameter layers real in `RuntimeDef`** — Weights/Runtime/Engine/Communication.
+   `temperature` still hardcoded `0.7` (`NpuClient:101`, `CloudLlmRuntime:122`);
+   `verbosity` slider read by nothing; `cores` maps to GenieX's real `n_threads` in
+   `geniex_ModelConfig`; add the compute-unit selector here.
+5. **Inbound listener** — zero `ServerSocket`/Ktor. Blocks Termux getting
    mic/voice/WebView-OAuth. NPU access does not need it.
-8. **`http_server.cpp`** — `Content-Length: 8` for a 9-byte body (`:54`); single
-   8 KB `recv()` truncates `image_b64` (`:22-29`).
-
-### Unproven
-
-The ~90 s first-crash trigger. Diagnostics amplifiers were fixed in session 20;
-Kokoro's boot fetch was removed this session. Whether either was the cause is
-**unknown until someone reads the device**:
-`/sdcard/Android/data/com.horizons/files/diag → tail -40 crash.log`.
-Stack trace ⇒ JVM exception. Empty but the app died ⇒ killed from outside (LMK),
-and no trace will ever appear.
+6. **`http_server.cpp:22-29`** — single 8 KB `recv()` truncates `image_b64`.
 
 ### Process failures worth not repeating
 
-A prior session read 59 of the vault's 337 files and reported having read
-"everything" — missing `pending-corpora/`, which `SOURCE-PRECEDENCE` ranks
-**above** the locked visual specs. Uncontested assistant claims inside Gemini
-transcripts were promoted into `STATE-OF-EXISTENCE` as build-state facts. And a
-skipped question was treated as consent to act. All three are cheap to avoid and
-expensive to inherit.
+- **A comment is not code.** Twice this session an agent reported a defect that existed
+  only in a stale comment (`LlmRuntime.kt:18`, and a "line 322" that was commentary
+  about removed behaviour). Grep for the *consumer*, not the description.
+- **Read the diff, not the PR body.** PR #33's write-up documents only the Router
+  change; its STT engine is invisible from the description.
+- **An uncontested assistant claim in a transcript is worth zero** (Rule 5). A Gemini
+  thread's claim about CI run #353 was promoted into `STATE-OF-EXISTENCE` as fact.
+- **A skipped question is NOT consent.** Take no action without an explicit order.
+- Reading `canon/` + `horizons-ui/` is **59 of the vault's 337 files**. `pending-corpora/`
+  is precedence rank 2 — *above* the locked visual specs — and is easy to miss entirely.
 
+---
 
 ## Repo File Map
 

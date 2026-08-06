@@ -46,6 +46,14 @@
 > READ THE DIFF, NOT THE WRITE-UP. It explicitly did NOT touch gate
 > semantics and did NOT add the arch/RAM check.
 >
+> ### PR #34 — current session's work, open draft, CI green (run #368)
+> `claude/deprecated-repo-recovery-ycl0i8`. Contains: Router FUSE BOX gate
+> removed (Rule 7a fix), Silero VAD CI fetch, 503 Content-Length fix,
+> ModelImportActivity .so allowlist removed (libggml-hexagon.so etc. now
+> accepted), MonitorPane detail truncation fixed, `manual` command in Monitor
+> console, wiki/BUILD-STATUS.md (mechanical feature inventory).
+> Needs operator decision to merge. Merge #33 first if possible.
+>
 > ### HARD STOPS
 > HomeGrid.kt is FROZEN at 984b061 / blob 618cf4b6. Never edit it, for any
 > reason, without explicit operator sign-off. The home screen is DONE.
@@ -116,9 +124,9 @@ Type `/memory` in any Claude Code session to reload full project context.
 5. Produce a SOTU summary + next action, confirm before touching any file
 
 ---
-## State of the Union — 2026-08-06 (session 22)
+## State of the Union — 2026-08-06 (session 22 + cont.)
 
-**This session read the corpus and verified it against live code.** Most of what it
+**Session 22 read the corpus and verified it against live code.** Most of what it
 produced is corrections. Several long-standing "facts" in these documents turned out
 to be false, and two of them were actively costing every session that inherited them.
 
@@ -158,7 +166,7 @@ because they branched early — git discards that on merge, so they are safe.
 **Measured STT sizes** (sherpa-onnx int8, loadable set): Whisper tiny.en 104 MB ·
 Moonshine tiny 124 MB · **Whisper base.en 161 MB** · Moonshine base 287 MB.
 
-### What landed this session
+### What landed (PR #34, `claude/deprecated-repo-recovery-ycl0i8`)
 
 - **The Router carries current.** `switchOn()`'s blocking `⚡ FUSE BOX` gate is gone
   (Rule 7a). It consults the Monitor, reports red lights, and attempts the flip
@@ -167,6 +175,18 @@ Moonshine tiny 124 MB · **Whisper base.en 161 MB** · Moonshine base 287 MB.
 - **Silero VAD actually ships.** CI never fetched `silero_vad.onnx`, so `VadFactory`
   silently degraded to RMS on every device. Now fetched (~2 MB).
 - **503 body no longer truncated** — `Content-Length: 8` for a 9-byte `not ready`.
+- **Import allowlist removed** (`ModelImportActivity`). The old hardcoded list was
+  rejecting `libggml-hexagon.so`, `libggml-htp-v79.so`, `libGenie.so`, and every
+  custom `.so` as "Unsupported file type" — including the exact libs the GGML Hexagon
+  NPU path needs. Any `.so` now passes. `geniex` binaries and extensionless executables
+  also accepted. Android's `(1)` dedupe suffix stripped from filenames automatically.
+- **Monitor detail string fixed** — `check.detail.takeLast(28)` was front-truncating
+  path strings: `"not found in app dirs or Download"` → `"ound in app dirs or Download"`.
+  Now shows tail with `…` prefix when >40 chars (`MonitorPane.kt:585`).
+- **`manual` command in Monitor console** — `manual` / `manual <section>` wired into
+  the Monitor's command dispatcher alongside `status`, `models`, etc.
+- **`wiki/BUILD-STATUS.md`** — mechanical feature inventory, ~60 rows verified by
+  grepping for consumers. Replaces unverified prose claims.
 
 **None of it is device-verified.** CI is the only check that has run.
 
@@ -239,21 +259,36 @@ abstract refactor; they are the tuner deck's controls.
   permissions, file search, UI. The NPU manager stays in-APK for coordination but must
   **not** own OOM detection.
 
-### Still open, in rough priority order
+### Still open — next session priority order
 
-1. **The 19 unmerged PRs.** Operator call. Six would overwrite the frozen HomeGrid.
-2. **Assess PR #33** before writing in Router/params/voice — it carries
-   `MoonshineSttEngine`, `switchOn()`→`DaemonLauncher`, and `NpuClient` port/healthPath.
-3. **The amperage check** — arch compatibility + free RAM vs declared footprint, added
-   to `greenLight()`. The operator's own item 3, and the only structural defence
-   against the LMK theory. **This, not the exec bit, is the missing check.**
-4. **Four parameter layers real in `RuntimeDef`** — Weights/Runtime/Engine/Communication.
-   `temperature` still hardcoded `0.7` (`NpuClient:101`, `CloudLlmRuntime:122`);
-   `verbosity` slider read by nothing; `cores` maps to GenieX's real `n_threads` in
-   `geniex_ModelConfig`; add the compute-unit selector here.
-5. **Inbound listener** — zero `ServerSocket`/Ktor. Blocks Termux getting
-   mic/voice/WebView-OAuth. NPU access does not need it.
+**Merge situation (operator call):** PR #34 is open draft, CI green as of run #368.
+PR #33 (`claude/repo-restructure-crash-analysis-j9v9fl`) carries real work
+(MoonshineSttEngine, Router loadConfig, NpuClient port/healthPath) and should be
+assessed and merged before any new Router/params/voice work begins. Six PRs
+(#30 #27 #26 #24 #22 #20) overwrite frozen HomeGrid and must not be merged without
+operator sign-off. Remaining ~12 PRs are stale-only and safe.
+
+**Device bugs confirmed from screenshots (not yet fixed):**
+- Navigation bars hiding top/bottom content — needs `WindowCompat.setDecorFitsSystemWindows`
+  + proper inset padding in `MainActivity` / `HorizonsApplication`
+- Duplicate Router configs ("Terminal: u0_a511" tiles) — `ps` output stored as model field
+- Old three-button floating tile still visible — stale overlay from ~4 months ago
+- No way to edit existing Router configs — create-only, no edit flow
+- Pop-up menus/tap-for-detail on tiles not implemented
+
+**Functional gaps in priority order:**
+1. **The amperage check** — arch compatibility + free RAM vs declared footprint in
+   `greenLight()`. Operator's own item 3; only structural defence against LMK kill.
+2. **Four parameter layers** in `RuntimeDef` — Weights/Runtime/Engine/Communication.
+   `temperature` hardcoded `0.7` (`NpuClient:101`, `CloudLlmRuntime:122`); `verbosity`
+   written by SettingsPane, read by nothing; `cores` → GenieX `n_threads`; add
+   compute-unit selector (`npu`/`hybrid`/`gpu`/`cpu`).
+3. **Whisper STT engine** (`WhisperSttEngine.kt` implementing `SttEngine`) + engine
+   family as a Runtime parameter. Recommended default: Whisper base.en int8 (161 MB).
+4. **~60 s utterance cap** — a few lines; stops noise hanging the voice stream.
+5. **Delete `DaemonSttClient`** — dead `:8091` fallback still masks STT failures.
 6. **`http_server.cpp:22-29`** — single 8 KB `recv()` truncates `image_b64`.
+7. **Inbound listener** — zero `ServerSocket`/Ktor. Blocks Termux mic/voice/OAuth.
 
 ### Process failures worth not repeating
 

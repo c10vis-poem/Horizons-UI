@@ -307,8 +307,11 @@ class HorizonsApplication : Application() {
         com.horizons.core.diag.Breadcrumb.drop("onCreate_after_super")
 
         if (!isMainProcess()) {
+            // Do NOT touch appState here — constructing EncryptedSharedPreferences
+            // concurrently with the main process races the Android Keystore keyset
+            // and crashes this process (see PR #12). :clifford's code paths (CRS
+            // loop, daemon launch, NPU swap) never read appState — grep confirms.
             com.horizons.core.diag.Breadcrumb.drop("onCreate_skip_non_main_process")
-            appState = AppStateStore(this)
             return
         }
 
@@ -387,7 +390,10 @@ class HorizonsApplication : Application() {
             com.horizons.core.diag.Breadcrumb.drop("onCreate_exit_ok")
         } catch (e: Throwable) {
             com.horizons.core.diag.Breadcrumb.drop("onCreate_threw: ${e.javaClass.simpleName}: ${e.message}")
-            throw e
+            android.util.Log.e("HorizonsApp", "Non-fatal onCreate failure — app will boot degraded", e)
+            if (!::appState.isInitialized) {
+                appState = AppStateStore(this)
+            }
         }
     }
 

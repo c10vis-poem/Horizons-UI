@@ -5,94 +5,99 @@
 > ```
 > Project: Novus Agenti (Omni Claw) — on-device agentic AI assistant.
 > App repo: c10vis-poem/Horizons-UI   Vault: c10vis-poem/OBSIDIAN-Master_Wiki
-> Protocol: c10vis-poem/aesop        Termux CLI: c10vis-poem/claude-code-android
+> Protocol: c10vis-poem/aesop         GenieX fork: c10vis-poem/GenieX
 >
-> ### FIRST: git branch -a. DO NOT ASSUME main IS THE BASE.
-> `main` does NOT contain the working home screen. The correct base is
-> RELEASE-correct-home-screen-984b0610 (= frozen 984b061 + 2 CI-only commits).
-> The two lineages differ in app code ONLY in HomeGrid.kt + its 2 fonts.
-> HomeGrid.kt is OPERATOR-FROZEN at 984b061 — do not touch it, for any reason,
-> including a CI-breaking fix, without explicit sign-off.
-> Active branch (both repos): claude/app-crash-landing-yc955p
-> Horizons-UI PR #32 (draft, base = RELEASE-correct-home-screen-984b0610).
-> APK: releases/tag/debug-claude-app-crash-landing-yc955p -> horizons.apk
+> ### SPECS LIVE IN THE VAULT, NOT HERE. READ THEM FIRST, IN FULL.
+> Vault `main` is current (PR #5 merged). Start with, in order:
+>   canon/SOURCE-PRECEDENCE.md      which source wins when two disagree
+>   canon/STATE-OF-EXISTENCE.md     the ONLY build-state authority
+>   canon/MASTER-BUILD-BLUEPRINT.md the target, W5+H, build map §12.1
+>   canon/horizons-ui/WHAT-IT-IS.md + FEATURE-INVENTORY.md
+>   horizons-ui/AGENT-BRIEF.md      hard stops + which local docs lie
+> The vault has 337 md files across 13 top-level dirs. canon/ + horizons-ui/
+> is 59 of them. pending-corpora/ is PRECEDENCE RANK 2 — higher than the
+> locked visual specs — and is easy to miss. Do not claim you read the
+> corpus after reading two folders. (A prior session did exactly that.)
 >
-> ### WHAT THIS IS
-> A manual, modular workbench, NOT a black box. Core law: "Daemons stay dumb,
-> the user is the loader" — boots EMPTY and stable; nothing runs until the user
-> flips a fuse. Seven tiles feed a center-hub Router.
+> ### BRANCH REALITY — verified 2026-08-06, trust this over older docs
+> `main` == 7b9e5db. It HAS the correct frozen HomeGrid (blob 618cf4b6).
+> RELEASE-correct-home-screen-984b0610 is 9 commits BEHIND main, 0 ahead.
+> **The old "main does NOT have the working home screen" warning is STALE.**
+> Basing off RELEASE now DISCARDS work. Verify with:
+>   git rev-parse origin/main:horizons/src/main/java/com/horizons/ui/HomeGrid.kt
 >
-> AUTHORITY MODEL (operator, 2026-07-31) — the circuit is IN SERIES:
->   Settings = supply (assets/keys). Can hand a config to the Router.
->              NO authority to run it.
->   Terminal = writes the fuse spec (parameters only). Never executes.
->   Monitor  = THE SWITCH IN THE LOOP. Verifies wiring. Open/loose => no
->              circuit, however perfect the fuse. Stores nothing, DISPATCHES.
->   Router   = fuse box + breaker. Carries current. Doesn't argue.
-> Validation must be LIVE at flip time (a series switch has no memory), but the
-> check belongs to the MONITOR. RouterPane.switchOn() currently re-implements it
-> instead of consulting it — that is the one real defect. The operator EXPLICITLY
-> REJECTED the Router as hardened gatekeeper; the gate is the Monitor's.
+> ### THE ACTUAL DISEASE: 19 OPEN DRAFT PRs, NONE MERGED
+> Every session branched from main, built something real, opened a draft PR,
+> got CI green, and stopped. So main never accumulates and each session
+> rediscovers or rebuilds what already exists elsewhere. This is why the
+> docs and the code disagree: the docs describe the UNION of 19 branches,
+> any session sees only main. It is a merge problem, not a docs problem.
 >
-> ### THE CRASH (why this branch exists)
-> Symptom: crashes ~90s after landing, worse each launch, "still trying to
-> connect." FIXED + CI green (unverified on device):
->  - FailureMonitor.install() built a full report SYNCHRONOUSLY ON THE MAIN
->    THREAD in Application.onCreate(), walking every crash + log file.
->  - Every "tail" read was really readText()/readLines() on the WHOLE file.
->  - Breadcrumb crash.log had NO cap and NO rotation.
->    => closed loop: crash -> bigger log -> heavier boot -> more crashes.
->  - CliffordService runs in :clifford, so its RouterConfigStore was a DIFFERENT
->    INSTANCE that loaded once in init and never re-read => a Router flip in the
->    UI was permanently invisible to the launcher. Fixed via reloadIfChanged().
-> STILL UNPROVEN: the trigger of the FIRST ~90s crash. Prime suspect is Android
-> LMK (leaves NO stack trace) — Kokoro pulls ~200MB at boot then loads a 326MB
-> ONNX in-process. Get the answer on device, no laptop needed:
->   cd /sdcard/Android/data/com.horizons/files/diag && tail -40 crash.log
-> Stack trace present => JVM exception. Empty but app died => killed from
-> outside (LMK/FGS), and no trace will ever appear. boot.log lines are now
-> tagged [main]/[clifford] so "did :clifford come up?" is answerable.
+> SIX of those PRs actively edit HomeGrid.kt and would OVERWRITE THE FREEZE:
+>   #30 #27 #26 #24 #22 #20  ← do not merge without operator sign-off
+> PR #33 carries the CORRECT blob plus real work (see below).
 >
-> ### PHASE 1 SCOPE (operator): the app must run its WebView browser, its voice
-> layer, and a backend for the Termux agent. NOT about hosted models.
->  - Browser: DONE — moved to Monitor, shared component, links open new tabs.
->  - Monitor pop-out tabs CONSOLE/TERMINAL/BROWSER: DONE.
->  - Voice: BROKEN IN THE MIDDLE. TTS works in-process (sherpa AAR). STT points
->    at 127.0.0.1:8091 and NOTHING BINDS IT, so the loop falls back to
->    llmRuntime.streamAudio and looks like a model problem. It isn't.
->    FIX = run Moonshine STT in-process on the AAR already shipping.
->  - Termux backend: DOES NOT EXIST. The app has ZERO inbound listeners.
->    NOTE: the app-spawned daemon already binds 127.0.0.1:8080 under the app's
->    UID and Termux shares loopback — so NPU access needs no inversion. What
->    Termux can't get on its own is mic/voice/WebView-OAuth. That's the listener.
+> ### PR #33 — read it before writing anything in Router/params/voice
+> `claude/repo-restructure-crash-analysis-j9v9fl`, open, draft, unmerged.
+> Contains: core/stt/MoonshineSttEngine.kt (in-process STT on the sherpa
+> AAR, no download, user-is-the-loader), switchOn() driving DaemonLauncher
+> from the RuntimeDef, NpuClient taking port/healthPath. Its BODY documents
+> only the Router change — the STT engine is invisible from the description.
+> READ THE DIFF, NOT THE WRITE-UP. It explicitly did NOT touch gate
+> semantics and did NOT add the arch/RAM check.
 >
-> ### KNOWN GAPS
->  - temperature is hardcoded (NpuClient:101, CloudLlmRuntime:122). Verbosity
->    HAS a Settings slider that NOTHING READS. Cores don't exist. These must
->    become real RuntimeDef params BEFORE P1.3 (runtime-agnostic launcher), or
->    the launcher gets reopened twice.
->  - greenLight() checks only 2 of the canon's 4 boxes (engine, assets). No
->    arch/RAM amperage check, no handshake check. And switchOn() SKIPS THE GATE
->    ENTIRELY when no RuntimeDef matches — so cloud/PWA/terminal configs bypass
->    the Monitor today.
->  - HomeGrid.kt:69 computes npuReady from startsWith("Adreno 830"), which the
->    NO-BACKEND fallback string also matches. FROZEN — report, don't fix.
->  - Two launcher icons: .MainActivity AND .uilocal.LocalHomeActivity both carry
->    MAIN/LAUNCHER. They run different code; test the tile icon. Operator asked
->    about removing the second LAUNCHER entry — not yet done.
+> ### HARD STOPS
+> HomeGrid.kt is FROZEN at 984b061 / blob 618cf4b6. Never edit it, for any
+> reason, without explicit operator sign-off. The home screen is DONE.
+> If a doc disagrees with the screen, the doc is wrong.
+> Never push main. No --no-verify / push --force / reset --hard.
+> A skipped or unanswered question is NOT consent. Take no action without
+> an explicit order.
 >
-> ### KNOWLEDGE — Drive is the source of truth
-> Use mcp__Google_Drive__* directly; the operator's material is all there.
-> Vault repo now carries the FULL migration: 1305 files, 363 md, 96 jsonl,
-> RAG_LIBRARY + BM25 index. To pull more Drive content use the
-> drive-to-obsidian-migration skill — do NOT hand-sync.
-> Two data-bank docs are AI transcripts, not specs (the "Gemini duel" doc
-> retracts its own central claim; 2026-07-17 is one the operator calls a snow
-> job). Architecture in them is canon; implementation claims are not.
-> UI direction captured: ROUTER = stereo stack, MONITOR = arcade cabinet,
-> TERMINAL = fakesteak matrix cascade. NOT to be built yet.
+> ### ARCHITECTURE — operator-confirmed 2026-08-06
+> Runtime pathways, both LIVE, selected by GenieX `plugin_id`:
+>   llama_cpp — GGUF (Q4_0), NPU via ggml-hexagon / GPU OpenCL / CPU
+>   qairt     — QAIRT .bin shards + geniex.json, NPU ONLY, max performance
+> TFLite / LiteRT / QAT are INPUT FORMATS to the AI Hub compile, which emits
+> the per-chipset bundle qairt loads. "The GGML route" = the llama.cpp
+> RUNTIME. It is NOT Google LiteRT — LiteRT appears in these docs only as
+> the REJECTED in-process option.
+> Quantization + model selection: SETTLED. Q4_0. Do not reopen or re-analyse.
 >
-> Use /memory to reload. HF_TOKEN / QAI_HUB_API_TOKEN come from the environment.
+> MODEL RESIDENCY: every model gets its own isolated device folder and loads
+> by absolute path. The APK NEVER downloads weights. Drag-and-drop to swap.
+> Same storage either way — downloading only buys a boot-time failure mode.
+>
+> VOICE: in-process on the sherpa-onnx AAR, on device, through the APK.
+> **NEVER on the NPU** — the actions model and query model already take turns
+> there. This closes blueprint §8.1. Termux+proot voice was a temporary
+> stopgap and is discarded; port its parameters, not its architecture.
+> Measured int8 sizes: Whisper tiny.en 104MB · Moonshine tiny 124MB ·
+> Whisper base.en 161MB · Moonshine base 287MB. (STATE-OF-EXISTENCE §2's
+> "Moonshine is materially smaller" is FALSE — base is 78% larger.)
+>
+> WIRED != LAUNCHED. The APK should be capable of everything on the phone —
+> sockets, the harness, permissions, an initial runtime for its own backend,
+> NPU manager + file search, WebView/Chromium hooks, API + cloud inference,
+> OpenRouter fallback. What is forbidden is LOADING AND LANDING with it.
+>
+> DAEMON SPLIT (operator, 2026-08-06): a dying process cannot report its own
+> death, so OOM recovery REQUIRES an external observer. Separate: LLM
+> inference (+ vision co-located), and the watchdog/recovery in :clifford.
+> In-process: voice, sockets, permissions, file search, UI. The NPU manager
+> stays in-APK for coordination but must NOT own OOM detection.
+>
+> ### AUTHORITY MODEL — series circuit
+> Settings supplies (no authority to run) · Terminal forges parameters only,
+> never executes · MONITOR is the switch, verifies LIVE at flip time, stores
+> nothing, dispatches · Router is fuse box + breaker, carries current,
+> DOESN'T ARGUE · Archives stores verified profiles, recovery restores here.
+> The Router NEVER says no. A failed flip is a circuit that didn't energise,
+> not an app throwing a wall. The operator EXPLICITLY REJECTED the hardened
+> gatekeeper. Rule 7a: behavioural metaphors are NEVER compiled. Rule 7b:
+> the supplied visual references ARE literal build specs.
+>
+> Use /memory to reload. HF_TOKEN / QAI_HUB_API_TOKEN from environment.
 > Never hardcode them.
 > ```
 
@@ -111,89 +116,95 @@ Type `/memory` in any Claude Code session to reload full project context.
 5. Produce a SOTU summary + next action, confirm before touching any file
 
 ---
+## State of the Union — 2026-08-06 (session 21)
 
-## State of the Union — 2026-07-31 (session 20)
+**This session did almost no coding on purpose.** It read the corpus, verified
+claims against live code, and found that a large share of what the last several
+sessions "knew" was wrong. The corrections matter more than the one fix that
+landed.
 
-**Repo moved.** Work is in `c10vis-poem/Horizons-UI` now, not `Novus-Agenti`.
-Vault is `c10vis-poem/OBSIDIAN-Master_Wiki`. Protocol spec is `c10vis-poem/aesop`.
+### The disease, finally named: 19 open draft PRs, none merged
 
-### The base-branch trap — read before anything
+Every session since roughly PR #6 branched from `main`, built something real,
+opened a **draft** PR, got CI green, and stopped. `main` therefore never
+accumulates, and each new session starts from a `main` missing all of its
+predecessors' work — so it rediscovers or rebuilds what already exists.
 
-`main` does **NOT** contain the working home screen. The correct base is
-**`RELEASE-correct-home-screen-984b0610`** (frozen `984b061` + 2 CI-only
-commits). The lineages differ in app code **only** in `HomeGrid.kt` + 2 fonts.
-This session started on `main` by mistake and had to re-base. **Run
-`git branch -a` before choosing a base** — there is more real work on unmerged
-branches in these repos than on `main`.
+This is the root cause of the "docs lie" problem. The documents describe the
+**union of nineteen branches**; any given session sees only `main`. Both sides
+of every contradiction were telling the truth about different trees.
 
-### Session 20 — crash root-caused, browser moved, vault recovered
+**Nothing else gets healthy until this is resolved.** It is an operator call.
 
-- **The diagnostics were amplifying the crash.** `FailureMonitor.install()` ran
-  a full disk-walking report **synchronously on the main thread** in
-  `onCreate()`; every "tail" read was a whole-file `readText()`/`readLines()`;
-  `crash.log` had **no cap and no rotation**. Closed loop: crash → bigger log →
-  heavier boot → more crashes. All three bounded; new `core/diag/FileTail.kt`
-  does seek-based reads. The operator called this before I did.
-- **The fuse could never reach the daemon.** `CliffordService` runs in
-  `:clifford`, so its `RouterConfigStore` was a *different instance* that loaded
-  once in `init` and never re-read — a Router flip in the UI was permanently
-  invisible to the launcher. Fixed with `reloadIfChanged()`.
-- Breadcrumbs now tagged `[main]`/`[clifford]` — "did `:clifford` come up?" is
-  finally answerable from the log.
-- **Browser moved to Monitor** as a shared `ui/browser/BrowserPane.kt`;
-  `setSupportMultipleWindows` was `false` so links could never open tabs — fixed,
-  which also unbreaks OAuth popups. Monitor gained CONSOLE/TERMINAL/BROWSER
-  pop-out tabs.
-- **PR #32 open (draft), CI green, APK published.** Not verified on device.
-- **Vault recovered.** The full Drive→Obsidian migration (1300 files, RAG library
-  46 docs/1786 chunks, BM25 index) existed unmerged on
-  `claude/drive-obsidian-migration-th115b` while `main` sat empty and four
-  `docs/mirror-*` branches carried 82 files. Merged. Vault is now 1305 files.
+### Verified facts — measured this session, trust over older docs
 
-**Still unproven:** the trigger of the first ~90 s crash. Prime suspect is
-Android **LMK** — leaves no stack trace. Needs the on-device `crash.log`.
-
-### Phase 1 (operator scope): browser · voice · Termux backend
-
-Explicitly **not** about hosted models.
-
-| Piece | State |
+| Claim | Verified reality |
 |---|---|
-| WebView browser | **DONE** — in Monitor, tabs work |
-| Monitor pop-outs | **DONE** |
-| Voice layer | **BROKEN MID-CHAIN** — TTS in-process ✓, STT points at dead `:8091`. Fix: Moonshine in-process on the AAR already shipping. |
-| Termux backend | **ABSENT** — app has zero inbound listeners. Needed for mic/voice/OAuth, *not* NPU (the app-spawned daemon already binds `:8080` and Termux shares loopback). |
+| "`main` lacks the working home screen" | **FALSE.** `HomeGrid.kt` = blob `618cf4b6` on `main`, `RELEASE`, and PR #33 alike; fonts identical |
+| RELEASE is the safe base | **Inverted.** RELEASE is **9 commits behind** `main`, 0 ahead. Basing off it discards work |
+| `greenLight()` checks 2 of 4 | **All four exist** (`RuntimeDefStore.kt:119-149`), exec bit at `:126-130` |
+| `switchOn()` re-implements the check | **It consults** — `RouterPane.kt:82` |
+| `HomeGrid.kt:69` npuReady bug (frozen, unfixable) | **A phantom.** No `startsWith("Adreno 830")` exists anywhere; `HomeGrid.kt` never reads `backendStatus`. Comment corrected at `LlmRuntime.kt` |
+| Cloud connectors `absent`, "no compiled remote client" | **FALSE.** `CloudLlmRuntime.kt` ships OpenRouter (`:50`) + SambaNova (`:59`) + custom, SSE streaming |
+| In-process Moonshine STT doesn't exist | **It does** — `MoonshineSttEngine.kt`, on PR #33, unmerged |
+| "Moonshine is materially smaller than Whisper base" | **FALSE.** Measured: Whisper base.en 161 MB, Moonshine base **287 MB** |
+| QAI Hub / QAIRT path is "dormant fallback" | **FALSE.** Both GenieX runtimes are live; `COMPILE-PIPELINE.md` is wrong |
 
-### Authority model — LAW (operator, 2026-07-31)
+**The genuinely missing check is the amperage gate** — architecture compatibility
+and free RAM vs the model's declared footprint. Not the exec bit. That is the
+operator's own item 3 from `2026-07-18.md`, and the only structural defence
+against the LMK theory.
 
-Series circuit, two independent authorities. **Settings** supplies and may hand
-a config to the Router but has **no authority to run it**. **Monitor is the
-switch in the loop** — stores nothing, but dispatches, and holds the verdict.
-**Router** is fuse box + breaker: carries current, doesn't argue. Validation is
-**live at flip time** (a series switch has no memory) but the check is the
-**Monitor's** — `RouterPane.switchOn()` re-implementing it is the one real
-defect. The operator **explicitly rejected** the Router-as-gatekeeper.
+### What landed this session
 
-### Next, in order
+- **Kokoro no longer downloads.** `KokoroModelManager` was a ~200 MB GitHub
+  fetch + bzip2 + untar called unconditionally from `onCreate()`, with
+  `tts.init()` loading the ONNX in-process right after. It is now a **resolver**:
+  candidate device folders, an optional pinned path (`tts.kokoro_dir`), and an
+  honest "missing: …" state. Mirrors `MoonshineSttEngine`'s user-is-the-loader
+  pattern. This was the single largest thing the app did at boot and the prime
+  suspect for the ~90 s first crash. **Unverified on device.**
+- **`LlmRuntime`'s status-string comment corrected** — it was the source that kept
+  regenerating the phantom `HomeGrid.kt:69` bug across sessions.
 
-1. **Moonshine STT in-process** — smallest change, closes the voice loop.
-2. **Termux backend listener** — exposes voice/mic/OAuth over loopback.
-3. **Runtime params first-class** (temperature/verbosity/cores) **before** P1.3,
-   or the launcher gets reopened twice.
-4. **P1.3** — drive `DaemonLauncher` from the flipped `RuntimeDef`.
-5. **Close the `switchOn()` bypass** — configs with no `RuntimeDef` skip the
-   gate entirely today, so cloud/PWA/terminal never reach the Monitor.
+### Still open, in rough priority order
 
-### Flagged, not actioned
+1. **The 19 unmerged PRs.** Operator call. Six of them (#30 #27 #26 #24 #22 #20)
+   would overwrite the frozen `HomeGrid.kt` if merged.
+2. **Assess PR #33** before writing anything in Router / params / voice — much of
+   it may already be done there.
+3. **`switchOn()` both ends** — delete the blocking `⚡ FUSE BOX` banner (rejected
+   Rule 7a behaviour) and close the no-`RuntimeDef` bypass.
+4. **The amperage check** — arch + RAM, added to `greenLight()`.
+5. **Four parameter layers real in `RuntimeDef`** — Weights/Runtime/Engine/
+   Communication. `temperature` still hardcoded `0.7` (`NpuClient:109`,
+   `CloudLlmRuntime:122`); `verbosity` slider read by nothing; `cores` maps to
+   GenieX's real `n_threads` in `geniex_ModelConfig`.
+6. **Silero VAD never ships** — `VadFactory` prefers it but CI never fetches
+   `silero_vad.onnx`, so it silently degrades to RMS on every device.
+7. **Inbound listener** — still zero `ServerSocket`/Ktor. Blocks Termux getting
+   mic/voice/WebView-OAuth. NPU access does not need it.
+8. **`http_server.cpp`** — `Content-Length: 8` for a 9-byte body (`:54`); single
+   8 KB `recv()` truncates `image_b64` (`:22-29`).
 
-- `HomeGrid.kt:69` reports NPU-ready for the *no-backend* fallback string.
-  **FROZEN — report only.**
-- Two launcher icons (`.MainActivity` + `.uilocal.LocalHomeActivity`) run
-  different code; confusing during triage. Removing the second `LAUNCHER` entry
-  is a pending operator call.
-- `verbosity` has a Settings slider **nothing reads**; `debugLogLevel` likewise.
+### Unproven
 
----
+The ~90 s first-crash trigger. Diagnostics amplifiers were fixed in session 20;
+Kokoro's boot fetch was removed this session. Whether either was the cause is
+**unknown until someone reads the device**:
+`/sdcard/Android/data/com.horizons/files/diag → tail -40 crash.log`.
+Stack trace ⇒ JVM exception. Empty but the app died ⇒ killed from outside (LMK),
+and no trace will ever appear.
+
+### Process failures worth not repeating
+
+A prior session read 59 of the vault's 337 files and reported having read
+"everything" — missing `pending-corpora/`, which `SOURCE-PRECEDENCE` ranks
+**above** the locked visual specs. Uncontested assistant claims inside Gemini
+transcripts were promoted into `STATE-OF-EXISTENCE` as build-state facts. And a
+skipped question was treated as consent to act. All three are cheap to avoid and
+expensive to inherit.
+
 
 ## Repo File Map
 

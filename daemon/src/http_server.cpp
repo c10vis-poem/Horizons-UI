@@ -51,7 +51,7 @@ struct HttpServer::Impl {
             bool ok = health_handler();
             std::string resp = ok
                 ? "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"
-                : "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 8\r\n\r\nnot ready";
+                : "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 9\r\n\r\nnot ready";
             send(client_fd, resp.c_str(), resp.size(), 0);
         } else if (method == "POST" && path == "/api/v1/generate") {
             // SSE response

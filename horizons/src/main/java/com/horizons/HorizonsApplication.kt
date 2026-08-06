@@ -97,11 +97,20 @@ class HorizonsApplication : Application() {
     // -- STT via the media daemon (Whisper) -- never in-process; models run detached --
     val stt: DaemonSttClient by lazy { DaemonSttClient(appState) }
 
+    /**
+     * In-process STT on the sherpa AAR that already ships for Kokoro TTS. Tried
+     * before [stt], whose media daemon on :8091 nothing in this app binds.
+     */
+    val moonshineStt: com.horizons.core.stt.MoonshineSttEngine by lazy {
+        com.horizons.core.stt.MoonshineSttEngine(this, appState)
+    }
+
     // -- Pending screen capture (dock button -> stored here -> chat ask) --
     val pendingScreenJpeg = MutableStateFlow<ByteArray?>(null)
 
     // -- LLM runtimes -- daemon first, cloud fallback --
     @Volatile private var _npuClient: NpuClient? = null
+    @Volatile private var _npuEndpoint: Pair<Int, String>? = null
     val cloudRuntime: CloudLlmRuntime by lazy { CloudLlmRuntime(appState) }
 
     val llmRuntime: LlmRuntime get() {
@@ -113,7 +122,11 @@ class HorizonsApplication : Application() {
     val isNpuActive: Boolean get() = _npuClient != null
 
     private val _fallbackRuntime = object : LlmRuntime {
-        override val backendStatus = MutableStateFlow("Adreno 830 · no backend")
+        // Must NOT start with "Adreno 830" or "Hexagon HTP": the home grid treats
+        // those prefixes as "NPU ready", so the old string made the no-backend
+        // fallback light up green. Fixed here rather than in HomeGrid.kt, which is
+        // frozen at 984b061.
+        override val backendStatus = MutableStateFlow("no backend · idle")
         override fun stream(prompt: String) = flow<String> {
             emit("[No inference backend available — start the on-device daemon or add a cloud API key in Settings]")
         }
@@ -258,12 +271,19 @@ class HorizonsApplication : Application() {
     }
 
     /**
-     * Voice STT: PCM -> media daemon (Whisper), never in-process, model-independent.
-     * Falls back to the active LLM's audio path only if the media daemon is down
-     * and a model that accepts audio is loaded.
+     * Voice STT: our own transcription, model-independent.
+     *
+     * Order is in-process Moonshine, then the media daemon, then — only if both
+     * are unavailable — the active LLM's audio path. Moonshine goes first because
+     * the daemon leg targets 127.0.0.1:8091 and nothing in this app binds it, so
+     * that call always returned "" and every transcription silently became an LLM
+     * request. That looked like a model fault and wasn't one.
      */
     suspend fun transcribeAudio(pcm: ShortArray, sampleRate: Int): String {
-        // Media daemon (Whisper) first; returns "" if the daemon isn't reachable.
+        // In-process first — no socket, no daemon, works with the app alone.
+        val local = moonshineStt.transcribe(pcm, sampleRate)
+        if (local.isNotBlank()) return local
+        // Media daemon, for setups that actually run one.
         val text = stt.transcribe(pcm, sampleRate)
         if (text.isNotBlank()) return text
         // Fallback only if the media daemon is down and an audio-capable LLM is active.
@@ -345,6 +365,11 @@ class HorizonsApplication : Application() {
             // -- STT: probe the media daemon so stt.ready reflects connectivity --
             scope.launch { runCatching { stt.probe() } }
 
+            // Load Moonshine off the main thread. onCreate() must stay light — a
+            // synchronous disk-walking init here is what made the boot crash
+            // compound in the first place.
+            scope.launch(Dispatchers.IO) { runCatching { moonshineStt.init() } }
+
             scope.launch { ttsVoiceId.collect { id -> tts.voiceId = id; appState.put(AppStateStore.KEY_TTS_VOICE, id) } }
             scope.launch { ttsSpeed.collect  { sp -> tts.speed   = sp; appState.put(AppStateStore.KEY_TTS_SPEED, sp.toString()) } }
 
@@ -355,8 +380,26 @@ class HorizonsApplication : Application() {
         }
     }
 
-    fun activateNpuRuntime() {
-        if (_npuClient == null) _npuClient = NpuClient()
+    /**
+     * Point the NPU runtime at a daemon endpoint. Defaults reproduce the old
+     * ort_engine-on-:8080 behaviour, so callers that don't know a RuntimeDef
+     * (CliffordService's own watchdog relaunch) are unaffected.
+     *
+     * When the Router flips a config whose RuntimeDef names a different port —
+     * geniex on :18181, or anything the user defined in the Terminal — the
+     * client is rebuilt against that endpoint instead of a compile-time
+     * constant. Without this the UI could plate any runtime it liked and the
+     * chat pane would still be talking to :8080.
+     */
+    fun activateNpuRuntime(
+        port: Int = com.horizons.core.shell.DaemonLauncher.ENGINE_PORT,
+        healthPath: String = "/health",
+    ) {
+        val target = port to healthPath
+        if (_npuClient == null || _npuEndpoint != target) {
+            _npuClient = NpuClient(port, healthPath)
+            _npuEndpoint = target
+        }
     }
 
     /**

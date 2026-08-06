@@ -37,7 +37,15 @@ import java.net.URL
  * Think-token shim: <think>…</think> blocks are collapsed to a single "[Thinking…]" emit.
  * The daemon may suppress them natively in future; this shim is a Kotlin-side safety net.
  */
-class NpuClient : LlmRuntime {
+class NpuClient(
+    /** Port of the daemon this client talks to — comes from the plated config's
+     *  RuntimeDef, so a config running geniex on :18181 is reached there rather
+     *  than at the ort_engine default. */
+    private val port: Int = DaemonLauncher.ENGINE_PORT,
+    /** Health endpoint path, likewise from the RuntimeDef (ort_engine uses
+     *  /health, geniex uses /v1/models). */
+    private val healthPath: String = "/health",
+) : LlmRuntime {
 
     private val _backendStatus = MutableStateFlow("Hexagon HTP · NPU (ort_engine daemon)")
     override val backendStatus: StateFlow<String> = _backendStatus.asStateFlow()
@@ -81,12 +89,12 @@ class NpuClient : LlmRuntime {
                 return@flow
             }
             else -> {
-                emit("[NPU daemon not reachable at 127.0.0.1:${DaemonLauncher.ENGINE_PORT}]")
+                emit("[NPU daemon not reachable at 127.0.0.1:$port]")
                 return@flow
             }
         }
 
-        val conn = URL("http://127.0.0.1:${DaemonLauncher.ENGINE_PORT}/api/v1/generate")
+        val conn = URL("http://127.0.0.1:$port/api/v1/generate")
             .openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"
@@ -151,7 +159,7 @@ class NpuClient : LlmRuntime {
 
     /** /health status: 200 ready · 503 up-but-model-not-ready · -1 unreachable. */
     private fun daemonHealthCode(): Int = try {
-        val conn = URL("http://127.0.0.1:${DaemonLauncher.ENGINE_PORT}/health")
+        val conn = URL("http://127.0.0.1:$port$healthPath")
             .openConnection() as HttpURLConnection
         conn.connectTimeout = 1_000
         conn.requestMethod  = "GET"

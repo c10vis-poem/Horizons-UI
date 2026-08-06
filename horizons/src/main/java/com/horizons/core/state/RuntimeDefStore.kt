@@ -89,6 +89,21 @@ data class RuntimeDef(
                 notes = "GenieX GGML/QAIRT daemon (planned). OpenAI-compatible wire on :18181/v1.",
                 builtIn = true,
             ),
+            RuntimeDef(
+                id = "llama000",
+                name = "llama-server",
+                binaryName = "llama-server",
+                port = 8081,
+                healthPath = "/health",
+                argsTemplate = "--model {model} --port {port} --host 127.0.0.1",
+                requiredAssets = emptyList(),
+                notes = "llama.cpp server. GGUF on CPU — no NPU/QNN assets, so it runs on " +
+                    "any arm64 device. Import the binary via Open with -> Horizons: the " +
+                    "launcher execs it from filesDir and cannot reach Termux's own " +
+                    "directory. Binds loopback, which Termux shares, so a Termux agent " +
+                    "reaches it at 127.0.0.1:8081 (OpenAI-compatible wire on /v1).",
+                builtIn = true,
+            ),
         )
     }
 }

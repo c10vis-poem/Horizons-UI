@@ -77,21 +77,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Local UI fork (session 16) — additive, does not replace MainActivity.
-             Separate launcher icon so both UIs are installable side by side while
-             this fork is under active development. -->
-        <activity
-            android:name=".uilocal.LocalHomeActivity"
-            android:exported="true"
-            android:label="Novus Agenti (Local)"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.Horizons">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
         <service
             android:name=".tiles.TerminalTile"
             android:icon="@android:drawable/ic_menu_manage"

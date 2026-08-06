@@ -46,7 +46,7 @@ class CliffordService : Service() {
     private var npuPerfLock: AutoCloseable? = null
 
     private enum class DaemonState(val label: String) {
-        Idle("idle — flip a fuse in the Router to run a model"), // nothing engaged; never auto-launch
+        Idle("idle — no runtime loaded"), // nothing engaged; never auto-launch
         BinaryMissing("waiting for daemon binary"),
         ModelMissing("waiting for model file"),
         Launching("starting daemon…"),

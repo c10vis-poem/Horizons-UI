@@ -92,6 +92,8 @@ import com.horizons.HorizonsApplication
 import com.horizons.ui.browser.BrowserPane
 import com.horizons.Panel
 import com.horizons.core.shell.DaemonLauncher
+import com.horizons.core.shell.ManualStore
+import com.horizons.core.shell.TaskerBridge
 import com.horizons.core.state.ConfigStatus
 import com.horizons.core.state.RouterConfig
 import com.horizons.core.state.RuntimeDef
@@ -369,7 +371,19 @@ private fun ShellTab(
         val command = cmd.trim().ifEmpty { return }
         running = true
         scope.launch {
-            val result = app.tasker.runShellCommand(command)
+            // `manual` is handled in-process rather than shelled out. The guide
+            // lives in filesDir so `cat` works too, but resolving it here means
+            // chapter lookup and search work without the user knowing the path.
+            val result = if (command == "manual" || command.startsWith("manual ")) {
+                val arg = command.removePrefix("manual").trim()
+                TaskerBridge.ShellResult(
+                    exitCode = 0,
+                    stdout = ManualStore.query(app, arg.ifEmpty { null }),
+                    stderr = "",
+                )
+            } else {
+                app.tasker.runShellCommand(command)
+            }
             history.add(ShellEntry(command, result.stdout, result.stderr, result.exitCode))
             if (result.exitCode == 0) cmd = ""
             running = false

@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class AppStateStore(context: Context) {
     private val prefs: SharedPreferences = createPrefs(context.applicationContext)
 
-    private val _snapshot = MutableStateFlow(loadAll())
+    private val _snapshot = MutableStateFlow(safeLoadAll())
     val snapshot: StateFlow<Map<String, String>> = _snapshot.asStateFlow()
 
     fun get(key: String): String? = _snapshot.value[key]
@@ -41,6 +41,19 @@ class AppStateStore(context: Context) {
 
     private fun loadAll(): Map<String, String> =
         prefs.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap()
+
+    /**
+     * `EncryptedSharedPreferences.create()` can succeed and then `.all` throws
+     * `AEADBadTagException` on the first decrypt if a specific entry is corrupt.
+     * Wrap loadAll so that read-time decryption failures don't kill the app at
+     * construction; empty map is the fallback and the UI can still render.
+     */
+    private fun safeLoadAll(): Map<String, String> = try {
+        loadAll()
+    } catch (e: Exception) {
+        Log.e(TAG, "loadAll() failed at decrypt — returning empty state", e)
+        emptyMap()
+    }
 
     companion object {
         private const val TAG = "AppStateStore"

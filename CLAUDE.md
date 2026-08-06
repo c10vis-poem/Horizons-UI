@@ -170,6 +170,43 @@ Moonshine tiny 124 MB · **Whisper base.en 161 MB** · Moonshine base 287 MB.
 
 **None of it is device-verified.** CI is the only check that has run.
 
+### ROUTER vs MONITOR — operator-confirmed 2026-08-06, independently
+
+`wiki/ROUTER-MONITOR-TERMINAL-SPEC.md` (from PR #33) claims "ADOPTED, dictated by
+the operator 2026-08-04." **That claim is now independently confirmed** — the
+operator restated it unprompted this session, in his own words. Recording it here
+because the spec itself notes a prior session was told this and never wrote it
+down, and because an agent-authored document asserting operator authority is not
+evidence on its own (Rule 5).
+
+> **Operator, 2026-08-06:** *"once you push to the router you go to the router …
+> you load what you want to load, you can set the temperature, adjust the voice
+> pitch speed depth verbosity of the model. The tape deck is where you upload
+> your file … your script if you had one, your hooks, environment, any kind of
+> runtime that you're using, what model you're using — you're basically prepping
+> your agent. Then go to monitor. Monitor will recognize [the file] because it's
+> already received the initial checkboxes, the parameters that it needs to pass
+> in order to run. If it satisfies those four instances then it gets the green
+> light to run. **So the router's basically just always on — there's no way to
+> short it out. You can't fuck it up by loading anything in the wrong sequence or
+> loading too much of something or not enough. The operator switch is at the
+> monitor level.**"*
+
+**Authority runs: TERMINAL defines → ROUTER loads/preps/holds → MONITOR verifies
+and dispatches.** The Router has **no gate, no verification, and no ignition**.
+It cannot fail, because it decides nothing. `switchOn()` is gone; `loadConfig()`
+replaces it.
+
+This **supersedes** the fuse-box/breaker framing wherever they conflict — that
+language was the operator making the concept legible, never a specification.
+Note it agrees with the blueprint's own §4 diagram (`MONITOR … stores nothing ·
+DISPATCHES`), which earlier sessions misread.
+
+**Consequence for the parameter work:** the Router *is* the stereo stack —
+CD changer = engaged model, tuner deck = temperature/verbosity/pitch/speed/depth,
+tape deck = the loaded runtime file. So the four parameter layers are not an
+abstract refactor; they are the tuner deck's controls.
+
 ### Architecture confirmed by the operator this session
 
 - **Consumer-grade, not device-specific.** Any Android device; iOS and x86 later.

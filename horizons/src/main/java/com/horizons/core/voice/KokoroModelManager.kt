@@ -2,124 +2,70 @@ package com.horizons.core.voice
 
 import android.content.Context
 import android.util.Log
-import com.horizons.core.state.AppStateStore
-import java.io.File
 
 sealed class KokoroSetupState {
     object Idle : KokoroSetupState()
-    /** Resolved on disk; every required file is present. */
+    /** Bundled asset files are present and readable. */
     object Ready : KokoroSetupState()
-    /** A directory was searched but files are absent. [missing] names them. */
+    /** The APK was built without the voice pack — a CI/build defect, not a user state. */
     data class Missing(val missing: List<String>) : KokoroSetupState()
 }
 
 /**
- * Resolves the Kokoro multi-lang v1.0 TTS model from a device folder. It does not
- * download anything.
+ * Resolves the Kokoro v0.19 (English) TTS model bundled directly in the APK's
+ * assets at `sherpa_tts/kokoro-en-v0_19/` — fetched at CI build time from
+ * Hugging Face (see `.github/workflows/build-apk.yml`), never downloaded by
+ * the app itself and never dependent on the user importing anything.
  *
- * ## Why this no longer downloads
+ * ## Why this is no longer a device-folder resolver
  *
- * This class used to pull a ~200 MB tar.bz2 from GitHub and extract it, and
- * [ensureReady] was called unconditionally from `HorizonsApplication.onCreate()`.
- * That put a 200 MB network fetch, a bzip2 decompress, and a full tar extract on
- * the boot path of an app whose core law is "boots empty, boots stable" — and
- * `SherpaOnnxTtsClient.init()` then loaded the ONNX in-process straight after.
- * It is the largest single thing the app did at startup and a prime suspect for
- * the unexplained ~90 s first crash.
+ * This class used to search a handful of device folders for a user-imported
+ * Kokoro multi-lang v1.0 directory. That model is multi-lingual (v1.0+) and
+ * requires a `lang`/`lexicon` parameter that was never supplied — sherpa-onnx's
+ * native init responded by calling `exit(-1)` on every cold boot, invisible to
+ * every Kotlin try/catch because it's a real process exit, not a thrown
+ * exception. Bundling the older, English-only v0.19 model (which has no such
+ * requirement) as an APK asset removes both problems: no import step, and no
+ * missing-parameter crash class.
  *
- * The download also contradicted the residency model: weights live in their own
- * clean device folder and load by absolute path, drag-and-drop swappable, nothing
- * large shipping or fetched by the APK. Storage cost is identical either way —
- * the only thing downloading bought was a boot-time failure mode, plus partial
- * extraction debris that made every subsequent boot re-download 200 MB on top of it.
- *
- * This mirrors [com.horizons.core.stt.MoonshineSttEngine]: the user is the loader,
- * the app resolves what is already there and reports what is not.
- *
- * ## Model files
- *
- * A Kokoro directory holds `model.onnx`, `voices.bin`, `tokens.txt`, and the
- * `espeak-ng-data/` directory. Fetch it once, by hand, from
- * `k2-fsa/sherpa-onnx` releases (`kokoro-multi-lang-v1_0.tar.bz2`) or any copy,
- * and unpack it into one of [candidateDirs] — or pin an explicit path under
- * [KEY_KOKORO_DIR].
+ * [com.k2fsa.sherpa.onnx.OfflineTts] loads straight from
+ * [android.content.res.AssetManager] via its `assetManager` constructor
+ * param — see `SherpaOnnxTtsClient.init()`. There is no filesystem copy step.
  */
-class KokoroModelManager(
-    private val context: Context,
-    private val appState: AppStateStore? = null,
-) {
+class KokoroModelManager(private val context: Context) {
 
     @Volatile
     private var _state: KokoroSetupState = KokoroSetupState.Idle
     val state: KokoroSetupState get() = _state
 
-    /** Directories searched when the user hasn't pinned one explicitly. */
-    private fun candidateDirs(): List<File> = listOf(
-        File(context.filesDir, "sherpa_tts/kokoro-multi-lang-v1_0"),
-        File(context.filesDir, "kokoro"),
-        File("/storage/emulated/0/Download/kokoro-multi-lang-v1_0"),
-        File("/storage/emulated/0/Download/kokoro"),
-    )
-
-    /** Required entries. `espeak-ng-data` is a directory; the rest are files. */
-    private fun missingFiles(dir: File): List<String> {
-        if (!dir.isDirectory) return REQUIRED
-        return REQUIRED.filterNot { name ->
-            val f = File(dir, name)
-            if (name == "espeak-ng-data") f.isDirectory else f.isFile
-        }
-    }
-
-    /** The directory holding a complete Kokoro model, or null if none qualifies. */
-    fun resolveModelDir(): File? {
-        appState?.get(KEY_KOKORO_DIR)?.takeIf { it.isNotBlank() }?.let { pinned ->
-            val dir = File(pinned)
-            return if (missingFiles(dir).isEmpty()) dir else null
-        }
-        return candidateDirs().firstOrNull { missingFiles(it).isEmpty() }
-    }
+    /** Asset-relative path prefix handed to `SherpaOnnxTtsClient`. */
+    val modelDir: String get() = ASSET_DIR
 
     /**
-     * Absolute path handed to `SherpaOnnxTtsClient`. Falls back to the first
-     * candidate so construction never fails; [state] is the source of truth for
-     * whether anything is actually there.
-     */
-    val modelDir: String
-        get() = (resolveModelDir() ?: candidateDirs().first()).absolutePath
-
-    /**
-     * Cheap filesystem check — no network, no extraction. Safe to call at boot,
-     * though callers should still keep it off the main thread out of habit.
-     * Replaces the old `ensureReady()`, which downloaded.
+     * Cheap `AssetManager.list()` check — no I/O beyond a directory listing.
+     * Guards against a CI build that shipped without the voice pack; a
+     * missing asset is a build defect, not a user-fixable state.
      */
     fun refresh(): KokoroSetupState {
-        val dir = resolveModelDir()
-        _state = if (dir != null) {
-            Log.i(TAG, "Kokoro model resolved at ${dir.absolutePath}")
+        val missing = missingAssets()
+        _state = if (missing.isEmpty()) {
+            Log.i(TAG, "Kokoro model bundled at assets/$ASSET_DIR")
             KokoroSetupState.Ready
         } else {
-            val probed = appState?.get(KEY_KOKORO_DIR)?.takeIf { it.isNotBlank() }
-                ?.let { File(it) } ?: candidateDirs().first()
-            val missing = missingFiles(probed)
-            Log.i(TAG, "Kokoro model not present; missing in ${probed.absolutePath}: $missing")
+            Log.w(TAG, "Kokoro voice pack missing from APK assets: $missing")
             KokoroSetupState.Missing(missing)
         }
         return _state
     }
 
+    private fun missingAssets(): List<String> {
+        val listed = runCatching { context.assets.list(ASSET_DIR)?.toSet() }.getOrNull() ?: emptySet()
+        return REQUIRED.filterNot { it in listed }
+    }
+
     companion object {
         const val TAG = "KokoroModelManager"
-
-        /** Pin an explicit Kokoro directory. */
-        const val KEY_KOKORO_DIR = "tts.kokoro_dir"
-
+        const val ASSET_DIR = "sherpa_tts/kokoro-en-v0_19"
         val REQUIRED = listOf("model.onnx", "voices.bin", "tokens.txt", "espeak-ng-data")
-
-        /**
-         * Where to get the model by hand. Recorded, not fetched — the app does not
-         * download weights.
-         */
-        const val MODEL_SOURCE_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
     }
 }

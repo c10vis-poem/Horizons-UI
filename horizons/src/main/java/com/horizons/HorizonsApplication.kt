@@ -77,11 +77,11 @@ class HorizonsApplication : Application() {
     private val _engineError = MutableStateFlow<String?>(null)
     val engineError: StateFlow<String?> = _engineError.asStateFlow()
 
-    // -- Kokoro model resolver -- finds the TTS model in a device folder. Never downloads. --
-    val kokoroManager: KokoroModelManager by lazy { KokoroModelManager(this, appState) }
+    // -- Kokoro model resolver -- finds the TTS model bundled in APK assets. Never downloads. --
+    val kokoroManager: KokoroModelManager by lazy { KokoroModelManager(this) }
 
     // -- Sherpa-ONNX TTS (Kokoro voices, no Android TextToSpeech broker) --
-    val tts: SherpaOnnxTtsClient by lazy { SherpaOnnxTtsClient(kokoroManager.modelDir) }
+    val tts: SherpaOnnxTtsClient by lazy { SherpaOnnxTtsClient(assets, kokoroManager.modelDir) }
 
     // -- Persisted voice settings exposed for RouterPane --
     val ttsVoiceId: MutableStateFlow<String> by lazy {
@@ -339,17 +339,17 @@ class HorizonsApplication : Application() {
                 com.horizons.core.diag.Breadcrumb.drop("cloud_refresh_failed: ${e.javaClass.simpleName}: ${e.message}")
             }
 
-            // -- TTS: resolve Kokoro from a device folder, never download. --
+            // -- TTS: Kokoro v0.19 (English) bundled in APK assets, never downloaded. --
             //
-            // This used to call kokoroManager.ensureReady(), which pulled ~200 MB
-            // from GitHub, bzip2-decompressed it, untarred it, and only then let
-            // tts.init() load the ONNX in-process. All of that ran on every boot
-            // of an app whose core law is "boots empty, boots stable", and it is a
-            // prime suspect for the unexplained ~90 s first crash.
-            //
-            // Now: a filesystem check on the IO dispatcher. If the model is there
-            // the TTS engine initialises; if it is not, the app boots clean and
-            // says which files are missing. No model is the normal boot state.
+            // This used to resolve a user-imported Kokoro multi-lang v1.0 directory
+            // from a device folder. That model requires a lang/lexicon param nothing
+            // ever supplied, so sherpa-onnx's native init called exit(-1) on every
+            // cold boot — a real process exit, invisible to this try/catch since it
+            // never routes through the JVM. Bundling the older v0.19 English model as
+            // an asset (loaded via AssetManager, see SherpaOnnxTtsClient.init())
+            // removes that requirement entirely. kokoroManager.refresh() here is just
+            // an AssetManager.list() sanity check — Missing means the CI build step
+            // that fetches the voice pack didn't run, not a user-fixable state.
             scope.launch(Dispatchers.IO) {
                 val state = runCatching { kokoroManager.refresh() }.getOrElse { e ->
                     com.horizons.core.diag.Breadcrumb.drop("kokoro_refresh_failed: ${e.javaClass.simpleName}: ${e.message}")

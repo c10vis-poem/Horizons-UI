@@ -69,11 +69,11 @@ jobs:
           pip install -q huggingface_hub
           DEST=horizons/src/main/assets/sherpa_tts/kokoro-en-v0_19
           mkdir -p "$DEST"
-          huggingface-cli download RuiSumida/sherpa-onnx-kokoro-int8-en-v0_19 \
+          hf download RuiSumida/sherpa-onnx-kokoro-int8-en-v0_19 \
             model.onnx voices.bin --local-dir /tmp/kokoro-int8
-          huggingface-cli download Mer0vin8ian/kokoro-en-v0_19 \
+          hf download Mer0vin8ian/kokoro-en-v0_19 \
             tokens.txt --local-dir /tmp/kokoro-fork
-          huggingface-cli download Mer0vin8ian/kokoro-en-v0_19 \
+          hf download Mer0vin8ian/kokoro-en-v0_19 \
             --include "espeak-ng-data/*" --local-dir /tmp/kokoro-fork
           cp /tmp/kokoro-int8/model.onnx /tmp/kokoro-int8/voices.bin "$DEST/"
           cp /tmp/kokoro-fork/tokens.txt "$DEST/"

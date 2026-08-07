@@ -36,6 +36,11 @@ secrets.properties
 # gradle task, never committed; keep any locally-built AAR out of the tree.
 horizons/libs/
 
+# Kokoro TTS voice pack — fetched from Hugging Face by the "Download Kokoro
+# TTS voice pack" CI step, never committed (134 MB+, would bloat the repo
+# permanently). Local builds must fetch it themselves; see build-apk.yml.
+horizons/src/main/assets/sherpa_tts/
+
 # OS
 .DS_Store
 Thumbs.db

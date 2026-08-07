@@ -35,6 +35,7 @@ class SherpaOnnxTtsClient(private val modelDir: String) {
                     voices = "$modelDir/voices.bin",
                     tokens = "$modelDir/tokens.txt",
                     dataDir = "$modelDir/espeak-ng-data",
+                    lang = "en-us",
                 ),
                 numThreads = 2,
                 debug = false,

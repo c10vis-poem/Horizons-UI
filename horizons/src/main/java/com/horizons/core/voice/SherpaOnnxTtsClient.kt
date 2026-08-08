@@ -1,5 +1,6 @@
 package com.horizons.core.voice
 
+import android.content.res.AssetManager
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
@@ -14,11 +15,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * On-device TTS via Sherpa-ONNX → Kokoro multi-lang v1.0.
+ * On-device TTS via Sherpa-ONNX → Kokoro v0.19 (English), bundled as an APK
+ * asset and loaded straight from [AssetManager] — no filesystem copy step.
  * Replaces the Android TextToSpeech broker (SystemTtsClient).
  * call init() once the model directory is ready (KokoroModelManager.state == Ready).
  */
-class SherpaOnnxTtsClient(private val modelDir: String) {
+class SherpaOnnxTtsClient(
+    private val assetManager: AssetManager,
+    private val modelDir: String,
+) {
 
     @Volatile private var engine: OfflineTts? = null
     @Volatile private var audioTrack: AudioTrack? = null
@@ -35,12 +40,13 @@ class SherpaOnnxTtsClient(private val modelDir: String) {
                     voices = "$modelDir/voices.bin",
                     tokens = "$modelDir/tokens.txt",
                     dataDir = "$modelDir/espeak-ng-data",
+                    lang = "en-us",
                 ),
                 numThreads = 2,
                 debug = false,
             ),
         )
-        engine = OfflineTts(config = config)
+        engine = OfflineTts(assetManager = assetManager, config = config)
         Log.i(TAG, "Sherpa-ONNX TTS ready — ${engine?.numSpeakers()} voices @ ${engine?.sampleRate()}Hz")
     }
 

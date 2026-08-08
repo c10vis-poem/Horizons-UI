@@ -174,6 +174,66 @@ prettier UI, push notifications, multi-session management. Candidate for the nex
 multi-agent fan-out (cloud Claude Code + OpenClaude-on-Termux + Omnara mobile front).
 Drop install + auth notes here after first run.
 
+---
+
+## Claude Code Remote Control — pair Termux with claude.ai/code or the mobile app
+
+Official Anthropic feature (research preview), verified against docs 2026-08-06.
+Different problem than Omnara above: this pairs the **official** `claude` CLI
+running in Termux with the web/mobile frontend as a window into it — execution
+and filesystem access never leave the phone.
+
+### Start it
+```bash
+cd <project-dir>          # must be a real project dir first — the workspace-trust
+                            # dialog never saves for $HOME, so start there or it
+                            # re-prompts every time
+claude remote-control      # server mode: stays running, prints a URL, spacebar
+                            # for a QR code, supports multiple concurrent sessions
+# or:
+claude --remote-control    # one interactive session, remote AND local input both work
+# or, from inside a session already running:
+/remote-control
+```
+Connect from elsewhere: open the printed URL, scan the QR code into the Claude
+app, or find the session by name at claude.ai/code (green dot = online).
+
+### Requirements
+- **Full OAuth login. `ANTHROPIC_API_KEY` set anywhere disables Remote Control
+  outright** — API keys are explicitly unsupported for it. Run `claude` then
+  `/login` (or `claude auth login`) first.
+- `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`,
+  `DISABLE_GROWTHBOOK` each silently disable it if set anywhere — unset all four.
+- Not available on Bedrock / Vertex / Foundry, or with a custom `ANTHROPIC_BASE_URL`
+  (e.g. an LLM gateway) pointed at anything other than `api.anthropic.com`.
+
+### Persistence — survives backgrounding only inside tmux/screen
+The local `claude` process has to keep running; closing Termux (not just
+switching apps) ends the Remote Control session outright.
+```bash
+tmux new -s remote
+claude remote-control
+# Ctrl-B, D to detach — session and connection both survive
+```
+See the "known conflict" below before reaching for this, though.
+
+### Known conflict — fights the usual Termux OAuth-flakiness fix
+The community workaround for Claude Code's OAuth being unreliable on Termux is
+switching to `export ANTHROPIC_API_KEY=…`. **That workaround and Remote Control
+are mutually exclusive** — Remote Control hard-requires OAuth and rejects API
+keys outright. If OAuth itself won't stay logged in on this device, Remote
+Control inherits that problem and there is no way around it via API key.
+
+### Killed guesses
+- ❌ "Use `ANTHROPIC_API_KEY` to dodge the re-auth loop, then start Remote
+  Control anyway." Contradictory by design — confirmed in the official docs,
+  not a bug: `ANTHROPIC_API_KEY` set anywhere is an unconditional block.
+- ❌ Assuming a plain `tmux` wrapper is risk-free for this. There's an open,
+  unresolved bug reporting persistent re-auth prompts **specifically inside
+  tmux**, even with valid stored credentials (see Sources). If re-auth keeps
+  happening, test `claude remote-control` **without** tmux first — if that's
+  clean, the bug is tmux-specific and wrapping it will reintroduce the loop.
+
 ## Sources
 - https://ivonblog.com/en-us/posts/vncserver-termux/
 - https://xdaforums.com/t/guide-no-root-how-to-remotely-connect-to-your-phone-or-any-android-device-using-termux-and-a-pc.4572647/
@@ -182,3 +242,6 @@ Drop install + auth notes here after first run.
 - https://docs.andronix.app/vnc/vnc-basics
 - OpenRouter DeepSeek V4: https://openrouter.ai/deepseek/deepseek-chat-v4
 - Omnara (YC S25): https://www.ycombinator.com/companies/omnara
+- Claude Code Remote Control (official docs): https://code.claude.com/docs/en/remote-control
+- Claude Code on the web / `--cloud` vs `--teleport` (official docs): https://code.claude.com/docs/en/claude-code-on-the-web
+- Persistent re-auth prompts inside tmux, open bug: https://github.com/anthropics/claude-code/issues/9903

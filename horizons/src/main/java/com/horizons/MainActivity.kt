@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -119,7 +120,10 @@ class MainActivity : ComponentActivity() {
                         activePanel = null
                     }
 
-                    Box(Modifier.fillMaxSize()) {
+                    // .systemBarsPadding() so the status bar and gesture-nav bar stop
+                    // clipping the top/bottom of every pane. HomeGrid is FROZEN so we
+                    // apply the inset here in the container rather than editing it.
+                    Box(Modifier.fillMaxSize().systemBarsPadding()) {
                     AnimatedContent(
                         targetState = activePanel,
                         transitionSpec = {

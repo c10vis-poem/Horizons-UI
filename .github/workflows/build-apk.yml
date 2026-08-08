@@ -54,6 +54,32 @@ jobs:
             https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
           ls -l horizons/src/main/assets/silero_vad.onnx
 
+      # Kokoro v0.19 (English) TTS voice pack, bundled straight into the APK's
+      # assets so the app never depends on a user-imported model directory.
+      # int8 model.onnx from a third-party quantization of the same v0.19
+      # model our own Mer0vin8ian/kokoro-en-v0_19 fork carries in fp32 — using
+      # the int8 build here to keep the APK smaller (134 MB vs 345 MB).
+      # tokens.txt + espeak-ng-data come from our own fork (your-fork-first).
+      # v0.19 predates Kokoro's multi-lingual lang/lexicon requirement, so
+      # this sidesteps the exit(-1) native-init crash entirely — see
+      # KokoroModelManager.kt for the full story.
+      - name: Download Kokoro TTS voice pack
+        run: |
+          set -e
+          pip install -q huggingface_hub
+          DEST=horizons/src/main/assets/sherpa_tts/kokoro-en-v0_19
+          mkdir -p "$DEST"
+          hf download RuiSumida/sherpa-onnx-kokoro-int8-en-v0_19 \
+            model.onnx voices.bin --local-dir /tmp/kokoro-int8
+          hf download Mer0vin8ian/kokoro-en-v0_19 \
+            tokens.txt --local-dir /tmp/kokoro-fork
+          hf download Mer0vin8ian/kokoro-en-v0_19 \
+            --include "espeak-ng-data/*" --local-dir /tmp/kokoro-fork
+          cp /tmp/kokoro-int8/model.onnx /tmp/kokoro-int8/voices.bin "$DEST/"
+          cp /tmp/kokoro-fork/tokens.txt "$DEST/"
+          cp -r /tmp/kokoro-fork/espeak-ng-data "$DEST/"
+          du -sh "$DEST"
+
       - name: Cache NDK + ORT
         uses: actions/cache@v4
         with:

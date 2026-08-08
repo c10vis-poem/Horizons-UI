@@ -68,18 +68,77 @@
 >             decrypt-at-read failures
 > Companion vault PR: c10vis-poem/NovA-Corpus#7 (10 canon files, docs only).
 >
+> ### THE BRANCH IS NO LONGER SOLO — fetch before touching anything
+> After this session's `a85128a`, THREE MORE COMMITS landed on
+> `claude/novus-device-file-loading-ij4k4r` from a separate push (another
+> session or the operator directly, not this session):
+>   `a7869ec` Fix boot crash: Kokoro TTS init calls native exit(-1) without
+>             lang param — see CRASH THEORY UPDATE below, this may be THE
+>             actual crash, not the AppStateStore/Keystore one this session
+>             chased.
+>   `309298c` Bundle Kokoro v0.19 TTS voice pack as an APK asset instead of
+>             device-folder import (changes KokoroModelManager's constructor
+>             and SherpaOnnxTtsClient to take `assets`, not a device path —
+>             anything referencing the old device-folder resolver is stale)
+>   `5e43646` CI fix: huggingface-cli deprecated, switched to `hf` — #380
+>             failed on this exact deprecation, #381 fixed it same-branch
+> **Always `git fetch` + rebase before writing to this branch.** Someone
+> else is actively pushing to it too.
+>
+> ### CRASH THEORY UPDATE — three candidates, none device-confirmed
+> Full writeup: vault `canon/STATE-OF-EXISTENCE.md` §3a (pushed this
+> session). Short version: the "app opens then crashes in one split
+> second" symptom now has THREE independent, code-confirmed candidate
+> causes on this one branch, and nobody has confirmed which (if any) is
+> actually firing on device:
+>   1. AppStateStore/Keystore master-key mismatch (this session, `985e593`)
+>   2. Kokoro TTS native `exit(-1)` without lang param (`a7869ec`, someone
+>      else) — a native exit produces the EXACT "no stack trace" symptom
+>      previously blamed on Android LMK, and is arguably the stronger
+>      candidate since it's a named, patched call site, not a theory
+>   3. Android LMK (original theory, `STATE-OF-EXISTENCE.md` §3, unproven)
+> **Do not write more speculative crash hardening.** Get
+> `/sdcard/Android/data/com.horizons/files/failures/` from the operator on
+> whatever build they're actually running, THEN fix what the log says.
+>
 > ### DEVICE STATUS AT END OF SESSION 22 late — UNRESOLVED
 > Operator installed the `34cfac2` APK — the insets+scanner build WITHOUT
 > the crash fix — and reported "crashed in one split second." That's
 > expected because 34cfac2 doesn't have the AppStateStore self-healing.
-> The `985e593` and `a85128a` builds land the crash fix + hardening; the
-> `a85128a` APK URL is:
+> The `985e593` and `a85128a` builds land the crash fix + hardening, and
+> now `a7869ec` (someone else) lands a second, likely-stronger crash fix.
+> APK URL (auto-updates on every push to this branch — always re-download,
+> never trust "I downloaded it earlier"):
 >   https://github.com/c10vis-poem/Horizons-UI/releases/download/debug-claude-novus-device-file-loading-ij4k4r/horizons.apk
-> **NEXT SESSION MUST VERIFY** whether the operator installed the newer
-> build and whether the crash reproduced. If it still crashes on `a85128a`,
-> get the crash log from `/sdcard/Android/data/com.horizons/files/failures/`
-> before writing any more speculative hardening — flying blind was the
-> problem, not the fix.
+> **NEXT SESSION MUST VERIFY** whether the operator installed a build with
+> BOTH crash fixes (anything at or after `a7869ec`) and whether the crash
+> reproduced. If it still crashes, get the crash log — see CRASH THEORY
+> UPDATE above — before writing any more speculative hardening. Flying
+> blind was the problem twice now, not the fix.
+>
+> ### OPERATOR DIRECTIVE (verbatim, 2026-08-06 late) — STANDING INSTRUCTION
+> After a stretch of docs-only output the operator escalated explicitly:
+> *"just build what I've been asking for for four months, no more
+> piecemeal."* This is why the session pivoted from writing specs to
+> shipping code (insets, scanner, crash fix) mid-session. **Read this as
+> a standing posture, not a one-time complaint**: default to code over
+> documentation when both are on the table, and when a task is genuinely
+> spec-first (new UI, new interaction), say so explicitly before doing it
+> rather than let a documentation pass look like the deliverable.
+>
+> ### SPECS ≠ CODE — the confusion that ate an hour tonight
+> The operator's detailed Router/Monitor/Terminal descriptions (animated
+> CD tray, tap-a-disc popup, dual-cassette split, oscilloscope panel, zoom)
+> were captured in full in vault PR #7 — `canon/horizons-ui/
+> ROUTER-STEREO-STACK-SPEC.md`, `TERMINAL-SPEC.md`,
+> `MONITOR-ARCADE-CABINET-SPEC.md` — real detail, all there. **None of it
+> was ever built into `RouterPane.kt` / `MonitorPane.kt` /
+> `TerminalPanel.kt`.** PR #35 never touches those files. The operator read
+> "detailed spec written" as "thing got built" and spent real anger on it
+> before this got sorted out. **Next session: if you write a spec, say so
+> plainly in the same breath — "this is written down, not built" — don't
+> let silence imply progress.** `STATE-OF-EXISTENCE.md` §5 and
+> `FEATURE-INVENTORY.md` §15's intro now carry this caveat explicitly too.
 >
 > ### NOT applied from PR #12 (available if wanted)
 > The jniLibs backend-bundle piece — build-apk.yml downloading llama-server

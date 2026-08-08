@@ -147,20 +147,20 @@ fun ArtifactsPane(
                                 Text(
                                     "${config.runtime.ifBlank { "—" }} / ${config.backend.ifBlank { "—" }} / ${config.model.ifBlank { "—" }}",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
+                                    fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 )
                                 Text(
                                     dateFormat.format(Date(config.createdAt)),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
+                                    fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                                 )
                             }
                             Text(
                                 "Restore",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = HorizonsColors.TileArtifacts,
                                 modifier = Modifier
@@ -172,7 +172,7 @@ fun ArtifactsPane(
                             Text(
                                 "Delete",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier
@@ -231,7 +231,7 @@ fun ArtifactsPane(
                 Text(
                     diagText.takeLast(4000), // last 4 KB so we see most recent
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -239,7 +239,7 @@ fun ArtifactsPane(
                     Text(
                         "Refresh",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = HorizonsColors.TileArtifacts,
                         modifier = Modifier.clickable {
                             diagText = com.horizons.core.diag.Breadcrumb.readAll()
@@ -248,7 +248,7 @@ fun ArtifactsPane(
                     Text(
                         "Clear",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = HorizonsColors.TileSettings,
                         modifier = Modifier.clickable {
                             com.horizons.core.diag.Breadcrumb.clear()
@@ -258,7 +258,7 @@ fun ArtifactsPane(
                     Text(
                         "Failure Report",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = HorizonsColors.TileMonitor,
                         modifier = Modifier.clickable {
                             // Rebuilds externalFilesDir/failures/{report.json,REPORT.md}
@@ -348,7 +348,7 @@ fun ArtifactsPane(
                 Text(
                     "Saves every stored session as one JSON array file wherever you choose.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
                 exportStatus?.let { status ->
@@ -356,7 +356,7 @@ fun ArtifactsPane(
                     Text(
                         status,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = HorizonsColors.TileArtifacts.copy(alpha = 0.8f),
                     )
                 }
@@ -396,7 +396,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                     "archive/",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
+                    fontSize = 13.sp,
                     color = HorizonsColors.TileArtifacts,
                     modifier = Modifier.clickable { path = "" },
                 )
@@ -404,7 +404,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                     Text(
                         "$seg/",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = HorizonsColors.TileArtifacts.copy(alpha = 0.7f),
                         modifier = Modifier.clickable {
                             path = path.split('/').filter { it.isNotBlank() }
@@ -416,7 +416,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                 Text(
                     "+folder",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = HorizonsColors.TileArtifacts,
                     modifier = Modifier.clickable { newFolderOpen = true }.padding(4.dp),
@@ -424,7 +424,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                 Text(
                     "+file",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = HorizonsColors.TileArtifacts,
                     modifier = Modifier.clickable { newFileOpen = true }.padding(4.dp),
@@ -437,7 +437,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                 Text(
                     "empty — archive terminal commands, harnesses, or add files here",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                 )
             }
@@ -470,14 +470,14 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                         Text(
                             "${entry.sizeBytes}B",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 9.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                         )
                         Spacer(Modifier.width(8.dp))
                     }
                     Text(
                         "✕",
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                         modifier = Modifier
                             .clickable {
@@ -499,7 +499,7 @@ private fun ArchiveFileManager(app: HorizonsApplication) {
                             app.archive.readText(path, entry.name)?.take(6000)
                                 ?: "(could not read file)",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                             modifier = Modifier.padding(8.dp),
                         )
@@ -613,14 +613,14 @@ private fun ChatSessionCard(
                         Text(
                             dateFormat.format(Date(session.createdAt)),
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "${session.messages.size} msgs",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         )
                         Spacer(Modifier.width(8.dp))
@@ -631,7 +631,7 @@ private fun ChatSessionCard(
                             Text(
                                 session.mode,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 color = HorizonsColors.TileArtifacts,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             )
@@ -666,7 +666,7 @@ private fun ChatSessionCard(
                         Text(
                             "${msg.role}: ${msg.text.take(120)}",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -677,7 +677,7 @@ private fun ChatSessionCard(
                         Text(
                             "... ${session.messages.size - 5} more messages",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                         )
                     }
@@ -716,7 +716,7 @@ private fun SavedCommandCard(cmd: SavedCommand) {
                     Text(
                         cmd.category,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         color = HorizonsColors.TileArtifacts,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     )
@@ -726,7 +726,7 @@ private fun SavedCommandCard(cmd: SavedCommand) {
             Text(
                 cmd.command,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -768,7 +768,7 @@ private fun LogFileCard(file: File, onShare: () -> Unit) {
                     Text(
                         dateFormat.format(Date(file.lastModified())),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
                 }
@@ -786,7 +786,7 @@ private fun LogFileCard(file: File, onShare: () -> Unit) {
                 Text(
                     preview,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -808,7 +808,7 @@ private fun PlaceholderCard(message: String) {
         Text(
             message,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             modifier = Modifier.padding(16.dp),
         )

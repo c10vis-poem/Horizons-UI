@@ -1,8 +1,44 @@
 # CLAUDE.md — Novus Agenti / Omni Claw
 
+## RULE 0 — VERIFY AGAINST LIVE STATE BEFORE TRUSTING ANY DOC (mandatory, first, every session, no exceptions)
+
+This file and the vault describe *intent*. `origin/main` and the open PR list
+are the only things that describe what is *actually true right now*, and they
+drift apart constantly: 19+ sessions have each branched from `main`, built real
+work, opened a **draft** PR, and stopped — so `main` never accumulates and this
+file's own "State of the Union" is written from whatever the union of branches
+looked like on the day it was last edited, not from what's on `main` today. A
+recent-looking SOTU date does not mean it is still accurate — it can go stale
+within 48 hours. It has.
+
+Before reading anything else as fact, in this order:
+1. `git fetch origin && git log --oneline -10 origin/main` — get the real
+   current tip and its last few merges.
+2. List open PRs (GitHub MCP `list_pull_requests`, `state=open`). This is
+   where undocumented reality lives — a PR can sit unmerged for days holding
+   real fixes this file never mentions. (It has happened: a PR shipped fixes
+   for bugs the operator was still hitting on device, unmerged for two days,
+   while this file said nothing about it.)
+3. Compare: does the highest PR number this file's SOTU claims landed actually
+   match `origin/main`'s merge history? If `main` has moved past the SOTU,
+   say so out loud, then re-derive current state from the live repo — grep the
+   actual consumer of a feature — before claiming anything works, is broken,
+   or is missing.
+4. Never tell the operator a feature is "done," "broken," or "unbuilt" on the
+   strength of prose alone. Grep the code. A comment is not code, a PR body is
+   not the diff, and a doc dated two days ago can already be wrong.
+
+This is not optional context-gathering. It is the one standing rule the
+operator has asked every session to follow, every single time, without
+exception — treat skipping it as a hard failure of the session, not a shortcut.
+
 > **RESUME PROMPT — COPY THIS BLOCK VERBATIM TO START ANY NEW SESSION**
 >
 > ```
+> FIRST: do RULE 0 above — fetch origin/main, list open PRs, verify the SOTU
+> below against live state before trusting a word of it. Say what's stale
+> before doing anything else.
+>
 > Project: Novus Agenti (Omni Claw) — on-device agentic AI assistant.
 > App repo: c10vis-poem/Horizons-UI   Vault: c10vis-poem/OBSIDIAN-Master_Wiki
 > Protocol: c10vis-poem/aesop         GenieX fork: c10vis-poem/GenieX

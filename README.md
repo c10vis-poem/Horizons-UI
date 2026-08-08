@@ -1,11 +1,10 @@
-# Novus Agenti · Omni Claw
+# Novus Agenti · NovA Claw
 
-**A fully on-device agentic AI assistant for the Motorola Razr Ultra 2025.**
-Inference runs on the phone's NPU — no cloud LLM in the main runtime, no CPU
-fallback for the target model. *"The unprecedented driving force."*
+**A fully on-device agentic AI assistant for Android**
+ *"The unprecedented driving force."*
 
 > Cl0vis × Mer0vin6ian · Project POEM. App package: `com.horizons`. Codebase
-> banner: **Omni Claw**.
+.
 
 ---
 
@@ -17,8 +16,7 @@ is split off from the UI: a lightweight **Kotlin app** drives a **detached
 native inference daemon** that runs the model on the **Hexagon NPU**, and the
 two talk over a local loopback HTTP socket.
 
-**Target hardware:** Snapdragon 8 Elite `SM8750` · Adreno 830 · **Hexagon HTP
-v79** · 16 GB. Phone-only build; `arm64-v8a`.
+**Target hardware:*`arm64-v8a`.
 
 ## Architecture
 

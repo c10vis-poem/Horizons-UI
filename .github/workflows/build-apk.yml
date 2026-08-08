@@ -80,6 +80,27 @@ jobs:
           cp -r /tmp/kokoro-fork/espeak-ng-data "$DEST/"
           du -sh "$DEST"
 
+      # Whisper base.en (int8), bundled straight into the APK's assets so the
+      # app never depends on a user-imported model directory — mirrors the
+      # Kokoro step above. This is the operator's standing STT model choice
+      # (near-identical size to Moonshine tiny, materially better accuracy);
+      # WhisperSttEngine.kt replaced an earlier in-process rewrite that had
+      # silently substituted Moonshine. All three files come from the
+      # operator's own fork (your-fork-first).
+      - name: Download Whisper STT model
+        run: |
+          set -e
+          pip install -q huggingface_hub
+          DEST=horizons/src/main/assets/sherpa_stt/whisper-base-en
+          mkdir -p "$DEST"
+          hf download Mer0vin8ian/sherpa-onnx-whisper-base.en \
+            base.en-encoder.int8.onnx base.en-decoder.int8.onnx base.en-tokens.txt \
+            --local-dir /tmp/whisper-base-en
+          cp /tmp/whisper-base-en/base.en-encoder.int8.onnx "$DEST/"
+          cp /tmp/whisper-base-en/base.en-decoder.int8.onnx "$DEST/"
+          cp /tmp/whisper-base-en/base.en-tokens.txt "$DEST/"
+          du -sh "$DEST"
+
       - name: Cache NDK + ORT
         uses: actions/cache@v4
         with:

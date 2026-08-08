@@ -229,7 +229,7 @@ fun MonitorPane(
                                 target.label,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
+                                fontSize = 13.sp,
                                 color = Accent,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             )
@@ -320,7 +320,7 @@ fun MonitorPane(
                             Text(
                                 msg,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 color = ErrorRed,
                                 modifier = Modifier.padding(12.dp),
                             )
@@ -358,7 +358,7 @@ fun MonitorPane(
                                         },
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         color = if (def == null || green) ReadyGreen else WarningAmber,
                                     )
                                 }
@@ -367,7 +367,7 @@ fun MonitorPane(
                                         "[ RUN ]",
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         color = ReadyGreen,
                                         modifier = Modifier
                                             .padding(top = 4.dp)
@@ -378,7 +378,7 @@ fun MonitorPane(
                                     Text(
                                         "fix the red lights in Runtime Definitions below before this can run",
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
+                                        fontSize = 12.sp,
                                         color = WarningAmber.copy(alpha = 0.6f),
                                         modifier = Modifier.padding(top = 4.dp),
                                     )
@@ -399,7 +399,7 @@ fun MonitorPane(
                 Text(
                     "Browse models and runtimes on disk. Tap to copy path.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
 
@@ -414,7 +414,7 @@ fun MonitorPane(
                                 "Import via Settings (vault) or use \"Open with → Horizons\" on any\n" +
                                 ".gguf / .onnx / .bin / .dlc / .pte / .tflite / .qnn file.",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(16.dp),
                         )
@@ -426,7 +426,7 @@ fun MonitorPane(
                         "RUNTIMES",
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = Accent.copy(alpha = 0.6f),
                     )
                     runtimeFiles.forEach { file ->
@@ -456,7 +456,7 @@ fun MonitorPane(
                         "MODELS",
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = Accent.copy(alpha = 0.6f),
                     )
                     // pinRev bumps on every plug/unplug so the rows recompose
@@ -554,28 +554,28 @@ fun MonitorPane(
                                         "${checks.count { !it.ok }} RED",
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
+                                    fontSize = 12.sp,
                                     color = if (green) ReadyGreen else WarningAmber,
                                 )
                             }
                             Text(
                                 ":${def.port}${def.healthPath} · ${def.notes.ifBlank { "no notes" }}",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                             )
                             checks.forEach { check ->
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         if (check.ok) "●" else "○",
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         color = if (check.ok) ReadyGreen else WarningAmber,
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
                                         check.label,
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurface.copy(
                                             alpha = if (check.ok) 0.7f else 0.9f,
                                         ),
@@ -584,7 +584,7 @@ fun MonitorPane(
                                     Text(
                                         check.detail.let { d -> if (d.length > 40) "…${d.takeLast(38)}" else d },
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 8.sp,
+                                        fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                                         maxLines = 1,
                                     )
@@ -595,7 +595,7 @@ fun MonitorPane(
                                     if (handedOff == def.id) "✓ HANDED TO ROUTER" else "[ HAND TO ROUTER ]",
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
+                                    fontSize = 12.sp,
                                     color = ReadyGreen,
                                     modifier = Modifier
                                         .padding(top = 4.dp)
@@ -617,7 +617,7 @@ fun MonitorPane(
                                 Text(
                                     "fix the red lights before this can reach the Router",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
+                                    fontSize = 12.sp,
                                     color = WarningAmber.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(top = 4.dp),
                                 )
@@ -672,7 +672,7 @@ fun MonitorPane(
                     Text(
                         "> $consoleOutput",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = HorizonsColors.TileTerminal,
                         modifier = Modifier.padding(12.dp),
                     )
@@ -731,7 +731,7 @@ private fun StatusRow(label: String, value: String, color: Color) {
         Text(
             label,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.width(120.dp),
@@ -739,7 +739,7 @@ private fun StatusRow(label: String, value: String, color: Color) {
         Text(
             value,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             color = color,
             modifier = Modifier.weight(1f),
         )
@@ -787,7 +787,7 @@ private fun LibraryFileCard(
                 Text(
                     if (copied) "COPIED" else sizeInfo,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = if (copied) ReadyGreen
                         else if (highlighted) ReadyGreen
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
@@ -796,20 +796,20 @@ private fun LibraryFileCard(
             Text(
                 compatInfo,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = compatColor.copy(alpha = 0.8f),
             )
             Text(
                 path,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
             )
             if (plugLabel != null && onPlug != null) {
                 Text(
                     plugLabel,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (highlighted) WarningAmber else ReadyGreen,
                     modifier = Modifier
@@ -831,7 +831,7 @@ private fun CompatRow(runtime: String, backend: String, formats: String) {
         Text(
             runtime,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = Accent,
             modifier = Modifier.width(90.dp),
@@ -839,14 +839,14 @@ private fun CompatRow(runtime: String, backend: String, formats: String) {
         Text(
             backend,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.width(110.dp),
         )
         Text(
             formats,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
     }

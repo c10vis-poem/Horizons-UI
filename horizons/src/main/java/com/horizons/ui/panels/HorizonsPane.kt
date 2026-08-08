@@ -168,7 +168,7 @@ private fun CreditRow(name: String, license: String, author: String) {
     Text(
         "$name · $license · $author",
         fontFamily = FontFamily.Monospace,
-        fontSize = 11.sp,
+        fontSize = 13.sp,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
     )
 }

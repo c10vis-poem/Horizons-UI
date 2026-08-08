@@ -148,14 +148,14 @@ fun IdleScreensaver(
             Text(
                 "// STANDBY",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 color = HorizonsColors.PrimaryTeal.copy(alpha = 0.5f),
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 "tap to wake",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.25f),
             )
         }

@@ -267,17 +267,17 @@ fun ChatPane(modifier: Modifier = Modifier) {
                 FilterChip(
                     selected = currentMode == ChatMode.C,
                     onClick = { selectMode(ChatMode.C) },
-                    label = { Text("Standard", fontSize = 11.sp) },
+                    label = { Text("Standard", fontSize = 13.sp) },
                 )
                 FilterChip(
                     selected = currentMode == ChatMode.A,
                     onClick = { selectMode(ChatMode.A) },
-                    label = { Text("Live", fontSize = 11.sp) },
+                    label = { Text("Live", fontSize = 13.sp) },
                 )
                 FilterChip(
                     selected = currentMode == ChatMode.B,
                     onClick = { selectMode(ChatMode.B) },
-                    label = { Text("Voice", fontSize = 11.sp) },
+                    label = { Text("Voice", fontSize = 13.sp) },
                 )
             }
 
@@ -507,7 +507,7 @@ private fun ChatSidePanel(
             Text(
                 "/ interface",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 color = ChatAccent.copy(alpha = 0.5f),
             )
 
@@ -556,7 +556,7 @@ private fun ChatSidePanel(
                                 Text(
                                     session.title.take(30),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isActive) ChatAccent else Color.White.copy(alpha = 0.8f),
                                     maxLines = 1,
@@ -565,14 +565,14 @@ private fun ChatSidePanel(
                                     Text(
                                         dateFmt.format(Date(session.createdAt)),
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
+                                        fontSize = 12.sp,
                                         color = Color.White.copy(alpha = 0.3f),
                                     )
                                     if (session.mode != "standard") {
                                         Text(
                                             session.mode.uppercase(),
                                             fontFamily = FontFamily.Monospace,
-                                            fontSize = 8.sp,
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = ChatAccent.copy(alpha = 0.5f),
                                         )
@@ -580,7 +580,7 @@ private fun ChatSidePanel(
                                     Text(
                                         "${session.messages.size} msgs",
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
+                                        fontSize = 12.sp,
                                         color = Color.White.copy(alpha = 0.3f),
                                     )
                                 }
@@ -601,7 +601,7 @@ private fun ChatSidePanel(
             Text(
                 "Swipe right to close",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.2f),
                 modifier = Modifier.padding(top = 4.dp),
             )

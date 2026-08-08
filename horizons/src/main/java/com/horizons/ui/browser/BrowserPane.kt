@@ -246,7 +246,7 @@ fun BrowserPane(
                         Text(
                             p.title.value.take(14),
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = if (selected) accent else accent.copy(alpha = 0.5f),
                         )
                         if (pages.size > 1) {
@@ -254,7 +254,7 @@ fun BrowserPane(
                             Text(
                                 "✕",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
+                                fontSize = 13.sp,
                                 color = accent.copy(alpha = 0.5f),
                                 modifier = Modifier
                                     .size(16.dp)
@@ -428,14 +428,14 @@ private fun ConnectionLostCat(accent: Color, reason: String, onRetry: () -> Unit
         Text(
             reason,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             color = accent.copy(alpha = 0.45f),
         )
         Spacer(Modifier.height(16.dp))
         Text(
             "[ tap to retry ]",
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             color = accent.copy(alpha = 0.35f),
         )
     }

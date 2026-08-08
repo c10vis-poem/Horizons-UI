@@ -1,58 +1,92 @@
 # CLAUDE.md — Novus Agenti / Omni Claw
 
+## RULE 0 — VERIFY AGAINST LIVE STATE BEFORE TRUSTING ANY DOC (mandatory, first, every session, no exceptions)
+
+This file and the vault describe *intent*. `origin/main` and the open PR list
+are the only things that describe what is *actually true right now*, and they
+drift apart constantly: 19+ sessions have each branched from `main`, built real
+work, opened a **draft** PR, and stopped — so `main` never accumulates and this
+file's own "State of the Union" is written from whatever the union of branches
+looked like on the day it was last edited, not from what's on `main` today. A
+recent-looking SOTU date does not mean it is still accurate — it can go stale
+within 48 hours. It has.
+
+Before reading anything else as fact, in this order:
+1. `git fetch origin && git log --oneline -10 origin/main` — get the real
+   current tip and its last few merges.
+2. List open PRs (GitHub MCP `list_pull_requests`, `state=open`). This is
+   where undocumented reality lives — a PR can sit unmerged for days holding
+   real fixes this file never mentions. (It has happened: a PR shipped fixes
+   for bugs the operator was still hitting on device, unmerged for two days,
+   while this file said nothing about it.)
+3. Compare: does the highest PR number this file's SOTU claims landed actually
+   match `origin/main`'s merge history? If `main` has moved past the SOTU,
+   say so out loud, then re-derive current state from the live repo — grep the
+   actual consumer of a feature — before claiming anything works, is broken,
+   or is missing.
+4. Never tell the operator a feature is "done," "broken," or "unbuilt" on the
+   strength of prose alone. Grep the code. A comment is not code, a PR body is
+   not the diff, and a doc dated two days ago can already be wrong.
+
+This is not optional context-gathering. It is the one standing rule the
+operator has asked every session to follow, every single time, without
+exception — treat skipping it as a hard failure of the session, not a shortcut.
+
 > **RESUME PROMPT — COPY THIS BLOCK VERBATIM TO START ANY NEW SESSION**
 >
 > ```
+> FIRST: do RULE 0 above — fetch origin/main, list open PRs, verify the SOTU
+> below against live state before trusting a word of it. Say what's stale
+> before doing anything else.
+>
 > Project: Novus Agenti (Omni Claw) — on-device agentic AI assistant.
 > App repo: c10vis-poem/Horizons-UI   Vault: c10vis-poem/OBSIDIAN-Master_Wiki
 > Protocol: c10vis-poem/aesop         GenieX fork: c10vis-poem/GenieX
 >
-> ### SPECS LIVE IN THE VAULT, NOT HERE. READ THEM FIRST, IN FULL.
-> Vault `main` is current (PR #5 merged). Start with, in order:
->   canon/SOURCE-PRECEDENCE.md      which source wins when two disagree
->   canon/STATE-OF-EXISTENCE.md     the ONLY build-state authority
->   canon/MASTER-BUILD-BLUEPRINT.md the target, W5+H, build map §12.1
->   canon/horizons-ui/WHAT-IT-IS.md + FEATURE-INVENTORY.md
->   horizons-ui/AGENT-BRIEF.md      hard stops + which local docs lie
-> The vault has 337 md files across 13 top-level dirs. canon/ + horizons-ui/
-> is 59 of them. pending-corpora/ is PRECEDENCE RANK 2 — higher than the
-> locked visual specs — and is easy to miss. Do not claim you read the
-> corpus after reading two folders. (A prior session did exactly that.)
+> ### THIS FILE IS THE SINGLE SOURCE. THE VAULT IS NOT REQUIRED READING.
+> The vault repo is `c10vis-poem/nova-corpus` (NOT `OBSIDIAN-Master_Wiki` —
+> that name is stale; the repo was renamed/restructured and its OWN root
+> CLAUDE.md is dated 2026-07-31 and doesn't even mention its current `canon/`
+> layout). Operator directive 2026-08-08: no more "read this doc but not
+> that doc" chains across repos. This file must stand on its own.
+> **Do not open the vault by default.** If something genuinely isn't
+> answerable from this file, say so explicitly and name the exact gap before
+> going to look — don't silently go read 337 files "to be safe."
+> If you do end up in the vault: `canon/STATE-OF-EXISTENCE.md` (its build-state
+> ledger) is ITSELF confirmed stale as of 2026-08-08 — it predates PRs #33/#34
+> merging and already contradicts this file's own verified SOTU below on
+> multiple rows (cloud connectors, Moonshine STT, greenLight() coverage). Its
+> own canon/CLAUDE.md says "read everything, completely, before acting" —
+> that instruction is what produced the 337-file sprawl; do not repeat it here.
 >
-> ### BRANCH REALITY — verified 2026-08-06, trust this over older docs
-> `main` == 7b9e5db. It HAS the correct frozen HomeGrid (blob 618cf4b6).
-> RELEASE-correct-home-screen-984b0610 is 9 commits BEHIND main, 0 ahead.
-> **The old "main does NOT have the working home screen" warning is STALE.**
-> Basing off RELEASE now DISCARDS work. Verify with:
->   git rev-parse origin/main:horizons/src/main/java/com/horizons/ui/HomeGrid.kt
+> ### BRANCH REALITY — verified 2026-08-08, trust this over older docs
+> `origin/main` == `2c64796`. PRs #33 and #34 (see below) are MERGED, not
+> open — if you're about to say either one is "unmerged, read the diff before
+> touching Router/voice," fetch first, you're looking at a stale copy of this
+> file. It HAS the correct frozen HomeGrid (blob 618cf4b6). Verify with:
+>   git fetch origin && git rev-parse origin/main:horizons/src/main/java/com/horizons/ui/HomeGrid.kt
 >
-> ### THE ACTUAL DISEASE: 19 OPEN DRAFT PRs, NONE MERGED
+> ### THE ACTUAL DISEASE: STILL ACTIVE, NOT HISTORICAL
 > Every session branched from main, built something real, opened a draft PR,
-> got CI green, and stopped. So main never accumulates and each session
-> rediscovers or rebuilds what already exists elsewhere. This is why the
-> docs and the code disagree: the docs describe the UNION of 19 branches,
-> any session sees only main. It is a merge problem, not a docs problem.
+> got CI green, and stopped. So main accumulates slowly and each session
+> risks rediscovering or rebuilding what already exists elsewhere. This is
+> why the docs and the code disagree: the docs describe the UNION of open
+> branches, any session sees only main. It is a merge problem, not a docs
+> problem, and it is STILL HAPPENING: PR #35 (insets fix + bulk storage
+> scanner, targets real device symptoms) sat open, unmerged, mergeable-clean,
+> for 2+ days before the operator even knew about it. Check the open PR list
+> yourself (RULE 0) — do not trust this paragraph's PR numbers to still be
+> the current open set by the time you read this.
 >
-> SIX of those PRs actively edit HomeGrid.kt and would OVERWRITE THE FREEZE:
->   #30 #27 #26 #24 #22 #20  ← do not merge without operator sign-off
-> PR #33 carries the CORRECT blob plus real work (see below).
->
-> ### PR #33 — read it before writing anything in Router/params/voice
-> `claude/repo-restructure-crash-analysis-j9v9fl`, open, draft, unmerged.
-> Contains: core/stt/MoonshineSttEngine.kt (in-process STT on the sherpa
-> AAR, no download, user-is-the-loader), switchOn() driving DaemonLauncher
-> from the RuntimeDef, NpuClient taking port/healthPath. Its BODY documents
-> only the Router change — the STT engine is invisible from the description.
-> READ THE DIFF, NOT THE WRITE-UP. It explicitly did NOT touch gate
-> semantics and did NOT add the arch/RAM check.
->
-> ### PR #34 — current session's work, open draft, CI green (run #368)
-> `claude/deprecated-repo-recovery-ycl0i8`. Contains: Router FUSE BOX gate
-> removed (Rule 7a fix), Silero VAD CI fetch, 503 Content-Length fix,
-> ModelImportActivity .so allowlist removed (libggml-hexagon.so etc. now
-> accepted), MonitorPane detail truncation fixed, `manual` command in Monitor
-> console, wiki/BUILD-STATUS.md (mechanical feature inventory).
-> Needs operator decision to merge. Merge #33 first if possible.
+> Known as of 2026-08-08: SIX open PRs actively edit HomeGrid.kt and would
+> OVERWRITE THE FREEZE: #30 #27 #26 #24 #22 #20 ← do not merge without
+> operator sign-off. PR #35 (`claude/novus-device-file-loading-ij4k4r`) is
+> open, non-draft, mergeable-clean, and does NOT touch HomeGrid — contains
+> the insets/systemBarsPadding fix and a MANAGE_EXTERNAL_STORAGE-based bulk
+> file scanner for SettingsPane. Needs an explicit operator merge decision;
+> nobody has authority to merge it silently. PR #36 (this session) adds the
+> RULE 0 verification requirement above — same rule applies to it: confirm
+> its actual state via `list_pull_requests` rather than trusting this line.
 >
 > ### HARD STOPS
 > HomeGrid.kt is FROZEN at 984b061 / blob 618cf4b6. Never edit it, for any

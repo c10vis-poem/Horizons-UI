@@ -125,7 +125,7 @@ fun RouterPane(
                         Text(
                             "Active Backend",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = Accent.copy(alpha = 0.5f),
                         )
                         Text(
@@ -154,7 +154,7 @@ fun RouterPane(
                     Text(
                         "No plated configurations.\nBuild one in Settings, then export here — or create one below.",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.padding(16.dp),
                     )
@@ -289,13 +289,13 @@ private fun MealCard(
                     Text(
                         slot.slotName,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
                     Text(
                         slot.value.takeLast(40),
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = ReadyGreen.copy(alpha = 0.8f),
                     )
                 }
@@ -311,12 +311,12 @@ private fun MealCard(
                             contentColor = ReadyGreen,
                         ),
                     ) {
-                        Text("LOAD", fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                        Text("LOAD", fontFamily = FontFamily.Monospace, fontSize = 13.sp)
                     }
                 }
                 if (onSleep != null && !isSleeping) {
                     OutlinedButton(onClick = onSleep) {
-                        Text("Sleep", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = SleepAmber)
+                        Text("Sleep", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = SleepAmber)
                     }
                 }
                 if (isSleeping) {
@@ -327,14 +327,14 @@ private fun MealCard(
                             contentColor = Accent,
                         ),
                     ) {
-                        Text("Wake", fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                        Text("Wake", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
                 OutlinedButton(onClick = onArchive) {
-                    Text("Archive", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Accent.copy(alpha = 0.6f))
+                    Text("Archive", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Accent.copy(alpha = 0.6f))
                 }
                 TextButton(onClick = onDelete) {
-                    Text("Delete", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color(0xFFFF6B6B))
+                    Text("Delete", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFFFF6B6B))
                 }
             }
         }
@@ -373,7 +373,7 @@ private fun IncompleteCard(
                 Text(
                     "${slot.slotName} = ${slot.value.takeLast(30)}",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = ReadyGreen.copy(alpha = 0.6f),
                 )
             }
@@ -383,14 +383,14 @@ private fun IncompleteCard(
                 Text(
                     "Missing: ${config.missingSlots.joinToString(", ")}",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFFF6B6B),
                 )
             }
 
             TextButton(onClick = onDelete) {
-                Text("Remove", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color(0xFFFF6B6B))
+                Text("Remove", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color(0xFFFF6B6B))
             }
         }
     }
@@ -437,7 +437,7 @@ private fun NewConfigForm(
             Text(
                 "Runtime",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = Accent.copy(alpha = 0.7f),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -452,7 +452,7 @@ private fun NewConfigForm(
                         Text(
                             opt,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = if (selected) Accent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         )
@@ -546,7 +546,7 @@ private fun StatusPill(text: String, active: Boolean) {
         Text(
             text,
             fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = if (active) HorizonsColors.StatusAsr else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),

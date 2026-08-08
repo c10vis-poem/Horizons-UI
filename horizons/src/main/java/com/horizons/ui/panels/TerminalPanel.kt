@@ -324,7 +324,7 @@ private fun ShellTab(
                     Text(
                         "Saved into Archives / terminal /",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = MatrixGreen.copy(alpha = 0.5f),
                     )
                     OutlinedTextField(
@@ -404,7 +404,7 @@ private fun ShellTab(
                     "Termux not installed — install from F-Droid and grant RUN_COMMAND permission.",
                     color = Color(0xFFFF6666),
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(8.dp),
                 )
             }
@@ -433,7 +433,7 @@ private fun ShellTab(
                     Text(
                         "$ ${entry.cmd}\n$output",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = color,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -566,7 +566,7 @@ private fun ShellTab(
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFAA77FF)),
                 ) {
-                    Text("Export to Router", fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                    Text("Export to Router", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                 }
                 OutlinedButton(
                     onClick = {
@@ -574,7 +574,7 @@ private fun ShellTab(
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5577)),
                 ) {
-                    Text("Save to Vault", fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                    Text("Save to Vault", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                 }
             }
         }
@@ -640,7 +640,7 @@ private fun TaskerTab(
                 "Tasker not installed — install from Play Store and enable External Access.",
                 color = Color(0xFFFF6666),
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
             )
         }
 
@@ -657,7 +657,7 @@ private fun TaskerTab(
                         Text(
                             "> ${entry.input}\n  ${entry.result}",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
+                            fontSize = 13.sp,
                             color = color,
                         )
                     }
@@ -748,7 +748,7 @@ private fun PromptsTab(
                         category.uppercase(),
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = MatrixGreen.copy(alpha = 0.6f),
                         modifier = Modifier.padding(top = 4.dp),
                     )
@@ -776,7 +776,7 @@ private fun PromptsTab(
             "ADD COMMAND",
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             color = MatrixGreen.copy(alpha = 0.6f),
         )
 
@@ -895,7 +895,7 @@ private fun PromptCard(
                 Text(
                     cmd.command,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MatrixGreen.copy(alpha = 0.5f),
                     maxLines = 1,
                 )
@@ -946,7 +946,7 @@ private fun RuntimeTab(app: HorizonsApplication) {
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
-            label = { Text(label, color = MatrixGreen.copy(alpha = 0.4f), fontSize = 11.sp) },
+            label = { Text(label, color = MatrixGreen.copy(alpha = 0.4f), fontSize = 13.sp) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             textStyle = TextStyle(fontFamily = FontFamily.Monospace, color = MatrixGreen, fontSize = 12.sp),
@@ -995,14 +995,14 @@ private fun RuntimeTab(app: HorizonsApplication) {
                                 if (def.requiredAssets.isNotEmpty())
                                     " · assets: ${def.requiredAssets.size}" else "",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             color = MatrixGreen.copy(alpha = 0.5f),
                         )
                         if (def.builtIn) {
                             Text(
                                 "built-in",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 9.sp,
+                                fontSize = 12.sp,
                                 color = MatrixGreen.copy(alpha = 0.3f),
                             )
                         }
@@ -1070,7 +1070,7 @@ private fun RuntimeTab(app: HorizonsApplication) {
             Text(
                 "✓ '$it' shipped — check its green lights in Monitor / console",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = MatrixGreen.copy(alpha = 0.7f),
             )
         }

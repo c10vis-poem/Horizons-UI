@@ -121,7 +121,7 @@ fun SettingsPane(
                 Text(
                     "Import models, runtimes, and libraries. Files land here, then export to Router when ready.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
 
@@ -185,7 +185,7 @@ fun SettingsPane(
                     Text(
                         msg,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )
                 }
@@ -204,7 +204,7 @@ fun SettingsPane(
                 Text(
                     "Encrypted storage for API tokens, credentials, and keys.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
 
@@ -411,7 +411,7 @@ fun SettingsPane(
                         Text(
                             label,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 9.sp,
+                            fontSize = 12.sp,
                             color = if (label == currentVerbosity) Accent else Accent.copy(alpha = 0.35f),
                         )
                     }
@@ -424,7 +424,7 @@ fun SettingsPane(
                 Text(
                     "Persistent key-value memory retained by the assistant.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
 
@@ -434,7 +434,7 @@ fun SettingsPane(
                     Text(
                         "(no memory entries)",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         color = Accent.copy(alpha = 0.4f),
                     )
                 } else {
@@ -452,21 +452,21 @@ fun SettingsPane(
                                     Text(
                                         key.removePrefix("memory."),
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.sp,
+                                        fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Accent,
                                     )
                                     Text(
                                         value,
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.sp,
+                                        fontSize = 13.sp,
                                         color = Color.White.copy(alpha = 0.8f),
                                     )
                                 }
                                 TextButton(onClick = { app.appState.remove(key) }) {
                                     Text(
                                         "Remove",
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         fontFamily = FontFamily.Monospace,
                                         color = Color(0xFFFF6B6B),
                                     )
@@ -509,7 +509,7 @@ fun SettingsPane(
                                 newMemKey = ""
                                 newMemVal = ""
                             }) {
-                                Text("Add", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = Accent)
+                                Text("Add", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Accent)
                             }
                         }
                     }
@@ -546,8 +546,8 @@ fun SettingsPane(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("7 days", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = Accent.copy(alpha = 0.4f))
-                    Text("90 days", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = Accent.copy(alpha = 0.4f))
+                    Text("7 days", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Accent.copy(alpha = 0.4f))
+                    Text("90 days", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Accent.copy(alpha = 0.4f))
                 }
 
                 HorizontalDivider(color = Accent.copy(alpha = 0.2f))
@@ -593,7 +593,7 @@ fun SettingsPane(
                 Text(
                     "These require manual setup via Android Settings.",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
 
@@ -632,7 +632,7 @@ fun SettingsPane(
                         Text(
                             "TERMINAL →",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = HorizonsColors.TileTerminal,
                         )
@@ -658,7 +658,7 @@ fun SettingsPane(
                         Text(
                             "ARCHIVES →",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = HorizonsColors.TileArtifacts,
                         )
@@ -726,19 +726,19 @@ private fun TokenField(
                 TextButton(onClick = { visible = !visible }) {
                     Text(
                         if (visible) "Hide" else "Show",
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace,
                         color = Accent,
                     )
                 }
                 if (draft != value) {
                     TextButton(onClick = { onSave(draft.trim()) }) {
-                        Text("Save", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = Accent)
+                        Text("Save", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Accent)
                     }
                 }
                 if (value.isNotBlank()) {
                     TextButton(onClick = onRemove) {
-                        Text("Remove", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = Color(0xFFFF6B6B))
+                        Text("Remove", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Color(0xFFFF6B6B))
                     }
                 }
             }
@@ -771,7 +771,7 @@ private fun PathField(
             )
             if (draft != value) {
                 TextButton(onClick = { onSave(draft.trim()) }) {
-                    Text("Save", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = Accent)
+                    Text("Save", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Accent)
                 }
             }
         }
@@ -794,7 +794,7 @@ private fun PermissionRow(name: String, granted: Boolean) {
         Text(
             if (granted) "GRANTED" else "DENIED",
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = if (granted) Color(0xFF4CAF50) else Color(0xFFFF6B6B),
         )
@@ -817,7 +817,7 @@ private fun RegistrationRow(name: String, status: String) {
         Text(
             status,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             color = Accent.copy(alpha = 0.7f),
         )
     }

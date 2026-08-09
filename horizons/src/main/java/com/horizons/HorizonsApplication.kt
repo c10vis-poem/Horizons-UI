@@ -393,17 +393,8 @@ class HorizonsApplication : Application() {
         } catch (e: Throwable) {
             com.horizons.core.diag.Breadcrumb.drop("onCreate_threw: ${e.javaClass.simpleName}: ${e.message}")
             android.util.Log.e("HorizonsApp", "Non-fatal onCreate failure — app will boot degraded", e)
-            // Guard the retry so a second failure doesn't propagate. If both attempts
-            // throw, appState stays uninitialized and lazy consumers will hit
-            // UninitializedPropertyAccessException later — surviving to render UI at
-            // all is still better than dying before onCreate returns.
             if (!::appState.isInitialized) {
-                try {
-                    appState = AppStateStore(this)
-                } catch (e2: Throwable) {
-                    com.horizons.core.diag.Breadcrumb.drop("appState_retry_failed: ${e2.javaClass.simpleName}: ${e2.message}")
-                    android.util.Log.e("HorizonsApp", "AppStateStore retry also failed", e2)
-                }
+                appState = AppStateStore(this)
             }
         }
     }

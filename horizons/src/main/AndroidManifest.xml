@@ -101,41 +101,6 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!--
-          ASSIST API (Voice Interaction) — ACTIVE.
-          To take effect on device: Settings → Apps → Default apps →
-          Digital assistant app → pick Horizons. After that, long-press home
-          (or the assist gesture) hands us the foreground screenshot + view
-          tree via HorizonsVoiceInteractionSession — no MediaProjection
-          consent prompt. Horizons replaces Google Assistant as the system
-          assistant while selected.
-        -->
-        <service
-            android:name=".assist.HorizonsVoiceInteractionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.service.voice.VoiceInteractionService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.voice_interaction"
-                android:resource="@xml/voice_interaction_service" />
-        </service>
-
-        <service
-            android:name=".assist.HorizonsVoiceInteractionSessionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true" />
-
-        <service
-            android:name=".assist.HorizonsRecognitionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.speech.RecognitionService" />
-            </intent-filter>
-        </service>
-
         <!-- Agent: NotificationListenerService — grants read access to notification shade.
              User must enable: Settings → Notification access → Horizons. -->
         <service
@@ -148,27 +113,7 @@
             </intent-filter>
         </service>
 
-        <!-- CLIFFORD (BRD) — daemon launcher + CRS recovery loop, isolated process -->
-        <service
-            android:name=".fgs.CliffordService"
-            android:foregroundServiceType="specialUse"
-            android:process=":clifford"
-            android:exported="false">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="NPU daemon guardian" />
-        </service>
-
-        <!-- Restart CLIFFORD after device boot (deferred 30s for Android 15+ FGS restriction) -->
-        <receiver
-            android:name=".fgs.CliffordBootReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- G14: Mode B — Live Chat FGS (audio loop + LLM stream, no screen) -->
+<!-- G14: Mode B — Live Chat FGS (audio loop + LLM stream, no screen) -->
         <service
             android:name=".fgs.LiveChatService"
             android:foregroundServiceType="microphone"

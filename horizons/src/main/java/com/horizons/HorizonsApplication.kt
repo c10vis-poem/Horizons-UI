@@ -326,14 +326,6 @@ class HorizonsApplication : Application() {
             appState = AppStateStore(this)
             com.horizons.core.diag.Breadcrumb.drop("appstate_loaded")
 
-            // CLIFFORD FGS -- separate process. Failure here shouldn't kill main.
-            try {
-                com.horizons.fgs.CliffordService.start(this)
-                com.horizons.core.diag.Breadcrumb.drop("clifford_started")
-            } catch (e: Throwable) {
-                com.horizons.core.diag.Breadcrumb.drop("clifford_failed: ${e.javaClass.simpleName}: ${e.message}")
-            }
-
             try {
                 cloudRuntime.refreshStatus()
                 com.horizons.core.diag.Breadcrumb.drop("cloud_refreshed")

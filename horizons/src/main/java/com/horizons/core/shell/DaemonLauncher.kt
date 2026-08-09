@@ -43,14 +43,9 @@ class DaemonLauncher(
 
             val logFile = File(context.getExternalFilesDir(null), "$binaryName.log")
 
-            // libonnxruntime.so and other runtime libs may live in either:
-            //   - the APK's nativeLibraryDir (when packaged as jniLibs, extracted at install)
-            //   - filesDir (when the operator imported them manually via ModelImportActivity
-            //     or the storage scanner in Settings)
-            // SELinux requires exec() from nativeLibraryDir on targetSdk 29+; filesDir works
-            // for dlopen but not exec. Both are searched so the runtime finds what it needs
-            // regardless of install source.
-            val libDir = "${context.applicationInfo.nativeLibraryDir}:${context.filesDir.absolutePath}"
+            // libonnxruntime.so is installed alongside the engine binary in filesDir
+            // (via ModelImportActivity's runtime-file import), not under a system lib path.
+            val libDir = context.filesDir.absolutePath
 
             // mksh -T- detaches the child from the controlling tty, reparenting it
             // to init so it survives shell exit. Equivalent to nohup + setsid.

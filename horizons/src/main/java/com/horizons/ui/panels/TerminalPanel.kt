@@ -382,7 +382,7 @@ private fun ShellTab(
                     stderr = "",
                 )
             } else {
-                app.tasker.runShellCommand(command)
+                app.tasker.runInteractiveCommand(command)
             }
             history.add(ShellEntry(command, result.stdout, result.stderr, result.exitCode))
             if (result.exitCode == 0) cmd = ""

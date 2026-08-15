@@ -78,10 +78,6 @@ sealed class AgentTool {
     /** Write text to clipboard. */
     data class WriteClipboard(val text: String) : AgentTool()
 
-    // ── Shell ─────────────────────────────────────────────────────────────────
-    /** Execute a shell command. Runs in-process (root if available). */
-    data class Shell(val command: String) : AgentTool()
-
     // ── Cloud / HTTP ──────────────────────────────────────────────────────────
     /** HTTP request to any URL. Use for cloud APIs, SambaNova, OpenRouter, etc. */
     data class HttpFetch(

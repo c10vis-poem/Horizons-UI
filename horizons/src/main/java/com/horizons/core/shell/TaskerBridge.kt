@@ -47,7 +47,13 @@ class TaskerBridge(private val context: Context) {
         }
     }
 
-    suspend fun runShellCommand(
+    /**
+     * USER-INITIATED ONLY. The sole caller is the Terminal room, where the user types
+     * the command themselves. This is deliberately NOT reachable from [AgentLoop]:
+     * this UID holds MANAGE_EXTERNAL_STORAGE, so anything run here can delete
+     * anything under /storage/emulated/0. Never wire this to a model-generated string.
+     */
+    suspend fun runInteractiveCommand(
         command: String,
         @Suppress("UNUSED_PARAMETER") workdir: String = "",
     ): ShellResult {

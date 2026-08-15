@@ -107,7 +107,6 @@ class AgentLoop(
         is AgentTool.PostNotification   -> notifTool.post(tool.title, tool.body, tool.channel)
         is AgentTool.ReadClipboard      -> clipTool.read()
         is AgentTool.WriteClipboard     -> clipTool.write(tool.text)
-        is AgentTool.Shell              -> runShell(tool.command)
         is AgentTool.HttpFetch          -> runHttpFetch(tool)
         is AgentTool.WebSearch          -> runWebSearch(tool)
         is AgentTool.BatteryStatus      -> sysTool.battery()
@@ -173,14 +172,6 @@ class AgentLoop(
         }
     }
 
-    private suspend fun runShell(command: String): ToolResult {
-        val r = tasker.runShellCommand(command)
-        return if (r.exitCode == 0)
-            ToolResult("shell", true, r.stdout.ifBlank { "(no output)" })
-        else
-            ToolResult("shell", false, "exit ${r.exitCode}: ${r.stderr.take(500)}")
-    }
-
     private fun runTasker(tool: AgentTool.TaskerTask): ToolResult {
         val params = buildList {
             if (tool.param1.isNotBlank()) add("par1" to tool.param1)
@@ -215,7 +206,6 @@ class AgentLoop(
             is AgentTool.PostNotification    -> { obj.put("name","post_notification"); obj.put("args",org.json.JSONObject().put("title",tool.title).put("body",tool.body)) }
             is AgentTool.ReadClipboard       -> obj.put("name","read_clipboard")
             is AgentTool.WriteClipboard      -> { obj.put("name","write_clipboard"); obj.put("args",org.json.JSONObject().put("text",tool.text)) }
-            is AgentTool.Shell               -> { obj.put("name","shell");        obj.put("args",org.json.JSONObject().put("command",tool.command)) }
             is AgentTool.HttpFetch           -> { obj.put("name","http_fetch");   obj.put("args",org.json.JSONObject().put("url",tool.url).put("method",tool.method).put("body",tool.body)) }
             is AgentTool.WebSearch           -> { obj.put("name","web_search");   obj.put("args",org.json.JSONObject().put("query",tool.query).put("max_results",tool.max_results)) }
             is AgentTool.BatteryStatus       -> obj.put("name","battery")

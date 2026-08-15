@@ -95,7 +95,13 @@ class AgentToolParser {
             )
             "read_clipboard"     -> AgentTool.ReadClipboard
             "write_clipboard"    -> AgentTool.WriteClipboard(args.getString("text"))
-            "shell"              -> AgentTool.Shell(args.getString("command"))
+            // Removed: the agent had unrestricted `sh -c` under MANAGE_EXTERNAL_STORAGE,
+            // reaching all of /storage/emulated/0 with no allowlist, path guard, or
+            // confirmation. Shell is now user-initiated only, via the Terminal room.
+            // Rejected explicitly (not via the generic `else`) so re-adding it is deliberate.
+            "shell"              -> throw IllegalArgumentException(
+                "shell is not an agent tool; run commands yourself in the Terminal room"
+            )
             "battery"            -> AgentTool.BatteryStatus
             "network"            -> AgentTool.NetworkStatus
             "storage"            -> AgentTool.StorageStatus
